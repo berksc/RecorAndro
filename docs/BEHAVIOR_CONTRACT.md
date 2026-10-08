@@ -14,7 +14,7 @@ Every proposed default was compared with the actual behavior recorded in the par
 | --- | --- | --- |
 | Input/media formats | Supported suffixes/demuxers, first recognized audio, conditional codec decoding; immutable originals. | Retain; exact tables and rejection policy in media contract. No import transcode or unknown-container expansion. |
 | Normalized/cut outputs | AAC-LC M4A, native AAC, 128000 mono / 192000 stereo; supported source rate else 48000; preserve channels. | Retain all values, filename basenames and copy exception. No Android format/rate/channel divergence. |
-| Normalization default | Explicit opt-in, off by default. | **Off by default**, preserving conservative opt-in. Auto/Force remain explicit available modes. |
+| Normalization default | Recora requires explicit opt-in normalization. | **Auto by default**, an explicit user-approved RecorAndro product decision. Off remains fully supported as a user-selectable mode; Force remains available. |
 | Auto normalization | Below -30 LUFS; target -26; positive gain <=3 dB, planned peak -3; useful gain >=0.5, floor 0.001. | Retain exact comparisons, filter and no-gain byte identity. |
 | Force normalization | No direct equivalent. | New RecorAndro behavior: intentional measurement and safe gain evaluation without the -30 eligibility gate; all other gain/safety constraints retained. No mandatory gain or re-encoding. |
 | Encoded peak validation | Reject finite peak >-1; warn >-2.9; null peak can pass numeric checks. | Same limits; require finite encoded peak for a boosted copy. Small safety tightening: an unavailable measurement cannot verify safe encoded output. |
@@ -29,11 +29,11 @@ Every proposed default was compared with the actual behavior recorded in the par
 | Full archive | Implemented capability in frozen Recora. | Supported, profile-controlled local capability; Lecture default explicitly pending real-device storage/performance evidence. |
 | Tool execution | No shell/remote media, explicit stream, fail-on-error, no overwrite, bounded passes. | Retain platform-neutral behavior and numeric timeouts; root and Windows execution/deployment are excluded. |
 
-The 600-second minimum, 1620-second Auto cutoff/nominal cap, constrained planning, Force modes and finite-output-peak check are deliberate RecorAndro contract additions, not extracted Recora behavior. They must be labeled accordingly in later tests and reports.
+The Auto normalization default, 600-second minimum, 1620-second Auto cutoff/nominal cap, constrained planning, Force modes and finite-output-peak check are deliberate RecorAndro contract additions, not extracted Recora behavior. They must be labeled accordingly in later tests and reports.
 
 ## D. Normalization modes
 
-Normalization and segmentation modes are independent. Normalization default is **Off**. Every run records requested mode, actual outcome and selected working source; the user initiates processing. No media step edits original bytes, deletes source silence, changes speed or uses visual data.
+Normalization and segmentation modes are independent. Normalization default is **Auto**. Off and Force remain user-selectable. Every run records requested mode, actual outcome and selected working source; the user initiates processing. No media step edits original bytes, deletes source silence, changes speed or uses visual data.
 
 ### Shared measurement and safe gain
 
@@ -197,7 +197,7 @@ Android-first, local-first, user-triggered and audio-first; no PC, server, Cloud
 
 | Constant / decision | Frozen value |
 | --- | --- |
-| Default modes | Normalization **Off**; segmentation **Auto**; processing remains user-triggered |
+| Default modes | Normalization **Auto**; segmentation **Auto**; processing remains user-triggered |
 | Auto normalization eligibility | Integrated loudness **strictly below -30 LUFS** |
 | Gain target / maximum / minimum | **-26 LUFS** / **+3 dB** / **0.5 dB** useful positive gain |
 | Planned / encoded peak | **-3 dBTP** gain headroom; reject encoded **>-1 dBTP**; warn **>-2.9 dBTP**; boosted output peak must be finite |
