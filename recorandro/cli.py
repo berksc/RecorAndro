@@ -6,6 +6,8 @@ import sys
 
 from .config import ConfigError, load_config
 from .diagnostics import doctor
+from .sessions import ImportFailure, PreflightDenied, import_audio
+from .storage import StorageError
 
 
 def log_result(root, ok: bool) -> None:
@@ -30,12 +32,35 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     check = commands.add_parser("doctor", help="Check environment and configured data root")
     check.add_argument("--json", action="store_true", help="Print machine-readable evidence")
+    ingest = commands.add_parser("import-audio", help="Import one immutable audio; media inspection deferred")
+    ingest.add_argument("path")
+    ingest.add_argument("--profile", default="lecture")
+    ingest.add_argument("--provision-seconds", required=True, type=int,
+                        help="User-supplied duration provisioning bound (1..604800), not measured duration")
+    ingest.add_argument("--archive", choices=("profile", "requested", "not_requested"), default="profile")
+    ingest.add_argument("--title")
+    ingest.add_argument("--course")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "import-audio":
+        try:
+            record = import_audio(config, args.path, profile=args.profile,
+                                  provision_seconds=args.provision_seconds, archive=args.archive,
+                                  title=args.title, course=args.course)
+        except (ImportFailure, StorageError, OSError, ValueError) as exc:
+            result = {"ok": False, "error": str(exc)}
+            if isinstance(exc, PreflightDenied):
+                result["storage_preflight"] = exc.preflight
+            elif isinstance(exc, ImportFailure) and exc.record is not None:
+                result["session"] = exc.record
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 1
+        print(json.dumps({"ok": True, "session": record}, ensure_ascii=False, indent=2))
+        return 0
     report = doctor(config)
     if report["data_root"]["writable"]:
         try:

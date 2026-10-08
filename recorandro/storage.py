@@ -1,0 +1,317 @@
+"""Pre-probe provisioning and owned, non-symlink managed filesystem operations."""
+
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import unicodedata
+import uuid
+
+MIB = 1024 * 1024
+RENAME_NOREPLACE = 1
+
+
+class StorageError(ValueError):
+    pass
+
+
+def _native_renameat2(source_fd, source_leaf, destination_fd, destination_leaf):
+    """libc directory-relative atomic move with kernel-enforced no replacement.
+
+    Use the device-verified renameat2 ABI and RENAME_NOREPLACE, not hardlinks.
+    Missing ctypes/symbol support and all native errors fail closed. Rename acts
+    on the source directory entry, without following a source symlink.
+    """
+    for fd in (source_fd, destination_fd):
+        if type(fd) is not int or not 0 <= fd <= 2147483647:
+            raise StorageError("Native publication requires pinned directory descriptors")
+    for leaf in (source_leaf, destination_leaf):
+        if (not isinstance(leaf, str) or not leaf or leaf in (".", "..") or
+                any(c in leaf for c in '/\\:\x00')):
+            raise StorageError("Native publication requires safe relative leaves")
+    try:
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        renameat2 = libc.renameat2
+    except (ImportError, OSError, AttributeError) as exc:
+        raise StorageError("Atomic no-replace publication unavailable: libc renameat2/ctypes required") from exc
+    renameat2.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    renameat2.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameat2(source_fd, os.fsencode(source_leaf), destination_fd,
+                       os.fsencode(destination_leaf), RENAME_NOREPLACE)
+    if result != 0:
+        import errno
+        code = ctypes.get_errno() or errno.EIO
+        raise OSError(code, os.strerror(code), destination_leaf)
+
+
+def archive_selection(profile, requested="profile", defaults=None):
+    if requested not in ("requested", "not_requested", "profile"):
+        raise StorageError("Archive must be requested, not_requested or profile")
+    resolved = requested
+    provenance = "explicit_request"
+    if requested == "profile":
+        value = (defaults or {}).get(profile)
+        resolved = "unresolved" if value is None else ("requested" if value else "not_requested")
+        provenance = "unresolved_profile_default" if value is None else "local_profile_setting"
+    return {"selection": requested, "resolved": resolved, "provenance": provenance,
+            "reserve_archive": resolved != "not_requested"}
+
+
+def preflight(source_bytes, provision_seconds, free_bytes, archive):
+    for name, value in (("source_bytes", source_bytes), ("free_bytes", free_bytes),
+                        ("provision_seconds", provision_seconds)):
+        if type(value) is not int:
+            raise StorageError(f"{name} must be an integer")
+    if source_bytes <= 0 or free_bytes < 0:
+        raise StorageError("Source must be nonempty and free bytes nonnegative")
+    if not 1 <= provision_seconds <= 604800:
+        raise StorageError("Provisioning bound must be 1..604800 seconds (not verified duration)")
+    count = (provision_seconds + 599) // 600 + 1
+    normalized = 30000 * provision_seconds + 65536
+    generated = max(source_bytes, 30000 * (provision_seconds + 5 * count) + 65536 * count)
+    temporary = max(source_bytes, normalized, generated)
+    archive_bytes = 2 * (source_bytes + normalized + generated) if archive["reserve_archive"] else 0
+    subtotal = source_bytes + normalized + 2 * generated + temporary + archive_bytes
+    headroom = max(256 * MIB, (subtotal + 4) // 5)
+    required = subtotal + headroom
+    return {"policy_version": 1, "source_bytes": source_bytes,
+            "provisioning_bound": {"seconds": provision_seconds, "provenance": "user_supplied",
+                                   "verified_media_duration": False},
+            "archive": archive, "part_count_allowance": count,
+            "components": {"immutable_original": source_bytes, "possible_normalized": normalized,
+                           "generated_audio": generated, "package_zip_duplication": generated,
+                           "temporary_work": temporary, "optional_full_archive": archive_bytes},
+            "headroom_policy": {"minimum_bytes": 256 * MIB, "subtotal_percent": 20,
+                                "reserved_bytes": headroom},
+            "estimated_required_bytes": required, "free_bytes": free_bytes,
+            "decision": "allow" if free_bytes >= required else "deny",
+            "assumptions": ["No duration or codec inferred from source bytes or suffix",
+                            "192000 bit/s requested stereo AAC plus 25% size allowance",
+                            "64 KiB per estimated container; 5 seconds per part allowance",
+                            "Generated audio also budgets an independent full-source byte copy",
+                            "ZIP may duplicate all generated bytes without compression savings",
+                            "Archive reserves two copies of original + normalized + generated",
+                            "One largest artifact reserved for temporary work; photos excluded",
+                            "Unresolved archive default reserves archive without selecting it",
+                            "Not a disk-space guarantee; later verified-media preflight required"]}
+
+
+def safe_leaf(name):
+    """Keep a bounded Unicode filename, never interpreting supplied text as a path."""
+    name = unicodedata.normalize("NFC", name)
+    cleaned = "".join("_" if c in '/\\<>:"|?*' or unicodedata.category(c).startswith("C")
+                      else c for c in name).strip(" .")
+    suffix = Path(cleaned).suffix
+    stem = cleaned[:-len(suffix)] if suffix else cleaned
+    stem = stem.strip(" .") or "audio"
+    if stem.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                                     *(f"LPT{i}" for i in range(1, 10))}:
+        stem = "_" + stem
+    while len((stem + suffix).encode("utf-8")) > 160:
+        stem = stem[:-1]
+        if not stem:
+            raise StorageError("Filename suffix is too long")
+    return stem + suffix
+
+
+def _is_redirect(info):
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+
+
+class OwnedDirectory:
+    """Pinned POSIX directory descriptors; checked path fallback on Windows.
+
+    All names passed to mutation methods are single leaves. Android uses dir_fd
+    and O_NOFOLLOW, so ancestor replacement cannot redirect managed operations.
+    Windows rejects reparse points and checks directory identity before each I/O.
+    """
+
+    def __init__(self, path, fd=None):
+        self.path = Path(path)
+        self.fd = fd
+        self.identity = self.path.stat() if fd is None else os.fstat(fd)
+
+    @classmethod
+    def root(cls, path):
+        path = Path(os.path.abspath(path))
+        if path == Path(path.anchor):
+            raise StorageError("Managed root must be an owned subdirectory")
+        if os.name == "posix":
+            flags = getattr(os, "O_PATH", os.O_RDONLY) | os.O_DIRECTORY | os.O_NOFOLLOW
+            fd = os.open(path.anchor, flags)
+            try:
+                for part in path.parts[1:]:
+                    try:
+                        next_fd = os.open(part, flags, dir_fd=fd)
+                    except FileNotFoundError:
+                        os.mkdir(part, mode=0o700, dir_fd=fd)
+                        next_fd = os.open(part, flags, dir_fd=fd)
+                    os.close(fd)
+                    fd = next_fd
+                readable = os.open(".", os.O_RDONLY | os.O_DIRECTORY, dir_fd=fd)
+                return cls(path, readable)
+            finally:
+                os.close(fd)
+        current = Path(path.anchor)
+        for part in path.parts[1:]:
+            current = current / part
+            try:
+                current.mkdir(mode=0o700)
+            except FileExistsError:
+                pass
+            info = current.lstat()
+            if _is_redirect(info) or not stat.S_ISDIR(info.st_mode):
+                raise StorageError(f"Unsafe managed directory: {current}")
+        return cls(path)
+
+    def close(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def _check(self):
+        if os.name == "posix":
+            return
+        for path in (self.path, *self.path.parents):
+            if _is_redirect(path.lstat()):
+                raise StorageError(f"Managed symlink/reparse point refused: {path}")
+        info = self.path.stat()
+        if (info.st_dev, info.st_ino) != (self.identity.st_dev, self.identity.st_ino):
+            raise StorageError("Managed directory identity changed")
+
+    def _leaf(self, name):
+        if not name or name in (".", "..") or any(c in name for c in '/\\:\x00'):
+            raise StorageError("Managed name must be a safe leaf")
+        self._check()
+
+    def child(self, name, exclusive=False):
+        self._leaf(name)
+        kwargs = {"dir_fd": self.fd} if self.fd is not None else {}
+        target = name if self.fd is not None else self.path / name
+        try:
+            os.mkdir(target, mode=0o700, **kwargs)
+        except FileExistsError:
+            if exclusive:
+                raise
+        if self.fd is not None:
+            fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.fd)
+            return OwnedDirectory(self.path / name, fd)
+        info = target.lstat()
+        if _is_redirect(info) or not stat.S_ISDIR(info.st_mode):
+            raise StorageError("Managed directory redirection refused")
+        return OwnedDirectory(target)
+
+    def open(self, name, flags, mode=0o600):
+        self._leaf(name)
+        if self.fd is not None:
+            return os.open(name, flags | os.O_NOFOLLOW, mode, dir_fd=self.fd)
+        path = self.path / name
+        if path.exists() or path.is_symlink():
+            if _is_redirect(path.lstat()) or not stat.S_ISREG(path.lstat().st_mode):
+                raise StorageError("Unsafe managed file")
+        return os.open(path, flags | getattr(os, "O_BINARY", 0), mode)
+
+    def info(self, name):
+        self._leaf(name)
+        if self.fd is not None:
+            return os.stat(name, dir_fd=self.fd, follow_symlinks=False)
+        return (self.path / name).lstat()
+
+    def unlink(self, name):
+        self._leaf(name)
+        if self.fd is not None:
+            os.unlink(name, dir_fd=self.fd)
+        else:
+            (self.path / name).unlink()
+
+    def publish(self, temporary, final, destination=None):
+        destination = destination or self
+        self._leaf(temporary)
+        destination._leaf(final)
+        pending = self.info(temporary)
+        if _is_redirect(pending) or not stat.S_ISREG(pending.st_mode):
+            raise StorageError("Only a regular owned temporary file can be published")
+        try:
+            destination.info(final)
+        except FileNotFoundError:
+            pass
+        else:
+            raise StorageError("Refusing to overwrite an imported original")
+        if self.identity.st_dev != destination.identity.st_dev:
+            raise StorageError("Atomic publication requires the same filesystem")
+        self._publish_original(temporary, final, destination, pending)
+
+    def _publish_original(self, temporary, final, destination, pending):
+        if self.fd is not None:
+            self._publish_noreplace(temporary, final, destination, pending)
+        elif os.name == "nt":
+            os.rename(self.path / temporary, destination.path / final)
+            destination.sync()
+        else:
+            raise StorageError("Native original publication requires pinned directory descriptors")
+
+    def _publish_noreplace(self, temporary, final, destination, pending):
+        """Atomic no-replace publication of the OWNED verified temporary inode.
+
+        renameat2(RENAME_NOREPLACE) refuses a destination created after the
+        advisory check. Only pinned descriptor-relative native moves are used;
+        no hardlink, ordinary rename or replace fallback is permitted here.
+        """
+        _native_renameat2(self.fd, temporary, destination.fd, final)
+        published = destination.info(final)
+        if (_is_redirect(published) or not stat.S_ISREG(published.st_mode) or
+                (published.st_dev, published.st_ino, published.st_size) !=
+                (pending.st_dev, pending.st_ino, pending.st_size)):
+            raise StorageError("Published file does not match the verified owned temporary")
+        # Native rename already removed the temporary name. Sync both directories
+        # without trying to unlink it. Errors leave failed/incomplete metadata
+        # and preserve the verified canonical file as an unreferenced orphan.
+        destination.sync()
+        self.sync()
+
+    def sync(self):
+        if self.fd is not None:
+            os.fsync(self.fd)
+
+    def free_bytes(self):
+        self._check()
+        if self.fd is not None:
+            result = os.fstatvfs(self.fd)
+            return result.f_bavail * result.f_frsize
+        return shutil.disk_usage(self.path).free
+
+    def atomic_json(self, record):
+        name = f".metadata-{uuid.uuid4().hex}.tmp"
+        fd = self.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as output:
+                json.dump(record, output, ensure_ascii=False, indent=2, allow_nan=False)
+                output.write("\n")
+                output.flush()
+                os.fsync(output.fileno())
+            self._leaf("session.json")
+            try:
+                existing = self.info("session.json")
+                if _is_redirect(existing) or not stat.S_ISREG(existing.st_mode):
+                    raise StorageError("Unsafe session metadata destination")
+            except FileNotFoundError:
+                pass
+            if self.fd is not None:
+                os.replace(name, "session.json", src_dir_fd=self.fd, dst_dir_fd=self.fd)
+            else:
+                os.replace(self.path / name, self.path / "session.json")
+            self.sync()
+        finally:
+            try:
+                self.unlink(name)
+            except FileNotFoundError:
+                pass

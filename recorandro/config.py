@@ -1,6 +1,6 @@
 """Explicit local configuration; loading never creates directories."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
@@ -16,6 +16,7 @@ class Config:
     data_root: Path
     ffmpeg: str = "ffmpeg"
     ffprobe: str = "ffprobe"
+    profile_archives: dict[str, bool | None] = field(default_factory=dict)
 
 
 def load_config(path: str | None = None, env: Mapping[str, str] | None = None) -> Config:
@@ -34,8 +35,8 @@ def load_config(path: str | None = None, env: Mapping[str, str] | None = None) -
             values = json.loads(config_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise ConfigError(f"Cannot read config: {exc}") from exc
-        if not isinstance(values, dict) or set(values) - {"data_root", "ffmpeg", "ffprobe"}:
-            raise ConfigError("Config must be an object with only data_root, ffmpeg, ffprobe")
+        if not isinstance(values, dict) or set(values) - {"data_root", "ffmpeg", "ffprobe", "profile_archives"}:
+            raise ConfigError("Config supports only data_root, ffmpeg, ffprobe, profile_archives")
     for key in ("data_root", "ffmpeg", "ffprobe"):
         override = env.get(f"RECORANDRO_{key.upper()}")
         if override is not None:
@@ -47,7 +48,8 @@ def load_config(path: str | None = None, env: Mapping[str, str] | None = None) -
     # File-relative paths resolve relative to the config; env paths must be absolute.
     if "RECORANDRO_DATA_ROOT" in env and not root_path.is_absolute():
         raise ConfigError("RECORANDRO_DATA_ROOT must be absolute (or start with ~/)")
-    root_path = (base / root_path).resolve()
+    # Preserve symlink components so managed storage can reject redirection.
+    root_path = Path(os.path.abspath(base / root_path))
     if root_path == Path(root_path.anchor):
         raise ConfigError("Data root must be an owned subdirectory, not a filesystem root")
     tools = []
@@ -56,4 +58,10 @@ def load_config(path: str | None = None, env: Mapping[str, str] | None = None) -
         if not isinstance(value, str) or not value.strip() or "\x00" in value:
             raise ConfigError(f"{key} must be an executable name or path, not arguments")
         tools.append(value)
-    return Config(root_path, *tools)
+    profiles = values.get("profile_archives", {})
+    if not isinstance(profiles, dict) or any(
+            not isinstance(key, str) or not key or len(key) > 64 or
+            not all(c.isascii() and (c.isalnum() or c in "_-") for c in key) or
+            (value is not None and type(value) is not bool) for key, value in profiles.items()):
+        raise ConfigError("profile_archives must map safe profile names to true, false or null")
+    return Config(root_path, *tools, profile_archives=profiles)
