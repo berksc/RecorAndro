@@ -1,0 +1,5 @@
+{
+  "data_root": "~/recorandro-data",
+  "ffmpeg": "ffmpeg",
+  "ffprobe": "ffprobe"
+}
