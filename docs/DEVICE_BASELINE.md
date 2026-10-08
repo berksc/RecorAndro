@@ -24,13 +24,13 @@ This is a secondary device, not the user's primary phone.
 | Exact MIUI version string | 13.0.7.0 (SKFTRXM) |
 | Security patch date | 2023-02-01 |
 
-An OTA update notification is present. This baseline reflects the installed build, pending the user's decision on OTA.
+An OTA update notification is present. Current Android/MIUI build accepted as RecorAndro v0.1 development baseline; OTA intentionally deferred by user.
 
 ## Environment
 
 | Field | Baseline value |
 | --- | --- |
-| Root status | Magisk installed; functional `su` access not independently verified yet |
+| Root status | Rooted — verified functional; per-app authorization via Magisk. |
 | Magisk | 31.0 (31000), installed |
 | Zygisk | Disabled |
 | Ramdisk | Yes |
