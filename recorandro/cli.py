@@ -8,6 +8,7 @@ from .config import ConfigError, load_config
 from .diagnostics import doctor
 from .sessions import ImportFailure, PreflightDenied, import_audio
 from .inspection import InspectionFailure, inspect_session
+from .normalization import NormalizationFailure, normalize_session
 from .storage import StorageError
 
 
@@ -44,12 +45,33 @@ def main(argv=None) -> int:
     inspect = commands.add_parser("inspect-session", help="Inspect a verified managed original; no decoding")
     inspect.add_argument("session_id")
     inspect.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted inspection")
+    normalize = commands.add_parser("normalize-session", help="Evaluate original audio normalization")
+    normalize.add_argument("session_id")
+    normalize.add_argument("--mode", choices=("auto", "force", "off"), default="auto")
+    normalize.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted normalization")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "normalize-session":
+        try:
+            attempt = normalize_session(config, args.session_id, mode=args.mode, retry=args.retry)
+        except (NormalizationFailure, InspectionFailure, StorageError, OSError) as exc:
+            result = {"ok": False, "error": {"code": exc.code if isinstance(exc, (NormalizationFailure, InspectionFailure))
+                                             else "session_access_failed",
+                                             "message": str(exc) if isinstance(exc, (NormalizationFailure, InspectionFailure))
+                                             else "Cannot safely access the existing session; check storage/permissions."}}
+            if len(args.session_id) == 32 and all(c in "0123456789abcdef" for c in args.session_id):
+                result["session_id"] = args.session_id
+            if isinstance(exc, NormalizationFailure) and exc.attempt is not None:
+                result["normalization"] = exc.attempt
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 1
+        print(json.dumps({"ok": True, "session_id": args.session_id, "normalization": attempt},
+                         ensure_ascii=False, indent=2, allow_nan=False))
+        return 0
     if args.command == "inspect-session":
         try:
             inspection = inspect_session(config, args.session_id, retry=args.retry)
