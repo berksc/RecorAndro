@@ -7,6 +7,7 @@ import sys
 from .config import ConfigError, load_config
 from .diagnostics import doctor
 from .sessions import ImportFailure, PreflightDenied, import_audio
+from .inspection import InspectionFailure, inspect_session
 from .storage import StorageError
 
 
@@ -40,12 +41,32 @@ def main(argv=None) -> int:
     ingest.add_argument("--archive", choices=("profile", "requested", "not_requested"), default="profile")
     ingest.add_argument("--title")
     ingest.add_argument("--course")
+    inspect = commands.add_parser("inspect-session", help="Inspect a verified managed original; no decoding")
+    inspect.add_argument("session_id")
+    inspect.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted inspection")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "inspect-session":
+        try:
+            inspection = inspect_session(config, args.session_id, retry=args.retry)
+        except (InspectionFailure, StorageError, OSError) as exc:
+            result = {"ok": False,
+                      "error": {"code": exc.code if isinstance(exc, InspectionFailure) else "session_access_failed",
+                                "message": str(exc) if isinstance(exc, InspectionFailure) else
+                                "Cannot safely access the existing session; check storage and permissions."}}
+            if len(args.session_id) == 32 and all(c in "0123456789abcdef" for c in args.session_id):
+                result["session_id"] = args.session_id
+            if isinstance(exc, InspectionFailure) and exc.inspection is not None:
+                result["inspection"] = exc.inspection
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 1
+        print(json.dumps({"ok": True, "session_id": args.session_id, "inspection": inspection},
+                         ensure_ascii=False, indent=2, allow_nan=False))
+        return 0
     if args.command == "import-audio":
         try:
             record = import_audio(config, args.path, profile=args.profile,
