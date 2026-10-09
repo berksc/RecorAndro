@@ -70,4 +70,29 @@ Successful no-gain decisions retain the original and create no normalized audio.
 New boosts receive attempt-owned verified outputs; prior outputs are preserved.
 Input loudness fields are under `normalization.input_levels`, not `measurement`.
 See [normalization policy, host and accepted Android evidence, transfer and existing-lecture validation](docs/SESSION_NORMALIZATION.md).
-Segmentation and packaging remain unimplemented.
+Analyze and save a nominal segmentation plan from that completed working source:
+
+```sh
+python -m recorandro plan-session "$session_id"               # Auto default
+python -m recorandro plan-session "$session_id" --mode force
+python -m recorandro plan-session "$session_id" --mode off
+python -m recorandro plan-session "$session_id" --retry        # Failed/interrupted plan
+```
+
+This performs read-only quiet analysis when multiple useful parts are feasible;
+it never normalizes again or cuts/exports audio. The fixed count and 600–1620 s
+multi-part bounds preserve complete source coverage without tiny tails. See
+[frozen planning policy, metadata, host fixtures and Android procedure](docs/SESSION_SEGMENTATION.md).
+Step 2.3 actual-device validation is completed and accepted: **FINAL PASS**,
+with 170/170 Android tests, zero failures or skips, and Python compilation PASS
+on the Redmi Note 10 Pro in ordinary non-root Termux. The existing lecture
+`d0c39956c17943299dd17e67bf6d1d68` used its verified managed original after
+normalization Auto's no-gain outcome. Auto and Force planned three nominal parts
+of 1500 / 1500 / 691.787029 seconds; Off covered the full 3691.787029-second source
+in one part. There were no qualifying quiet intervals; both Auto boundaries used
+`fallback_target`, and repeated Auto plans had identical nominal boundaries.
+All modes covered source end without errors, silence removal, export, cutting
+or re-normalization. See
+[accepted Android planning evidence](docs/SESSION_SEGMENTATION.md#accepted-android-validation--step-23-final-pass).
+Audio export and packaging remain unimplemented. Step 2.4 requires separate
+authorization.

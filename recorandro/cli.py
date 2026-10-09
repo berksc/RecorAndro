@@ -9,6 +9,7 @@ from .diagnostics import doctor
 from .sessions import ImportFailure, PreflightDenied, import_audio
 from .inspection import InspectionFailure, inspect_session
 from .normalization import NormalizationFailure, normalize_session
+from .segmentation import PlanningFailure, plan_session
 from .storage import StorageError
 
 
@@ -49,12 +50,32 @@ def main(argv=None) -> int:
     normalize.add_argument("session_id")
     normalize.add_argument("--mode", choices=("auto", "force", "off"), default="auto")
     normalize.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted normalization")
+    plan = commands.add_parser("plan-session", help="Analyze quiet boundaries and save nominal ranges; no audio export")
+    plan.add_argument("session_id")
+    plan.add_argument("--mode", choices=("auto", "force", "off"), default="auto")
+    plan.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted planning")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "plan-session":
+        try:
+            attempt = plan_session(config, args.session_id, mode=args.mode, retry=args.retry)
+        except (PlanningFailure, InspectionFailure, NormalizationFailure, StorageError, OSError) as exc:
+            known = isinstance(exc, (PlanningFailure, InspectionFailure, NormalizationFailure))
+            result = {"ok": False, "error": {"code": exc.code if known else "session_access_failed",
+                       "message": str(exc) if known else "Cannot safely access existing session planning files."}}
+            if len(args.session_id) == 32 and all(c in "0123456789abcdef" for c in args.session_id):
+                result["session_id"] = args.session_id
+            if isinstance(exc, PlanningFailure) and exc.attempt is not None:
+                result["segmentation"] = exc.attempt
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 1
+        print(json.dumps({"ok": True, "session_id": args.session_id, "segmentation": attempt},
+                         ensure_ascii=False, indent=2, allow_nan=False))
+        return 0
     if args.command == "normalize-session":
         try:
             attempt = normalize_session(config, args.session_id, mode=args.mode, retry=args.retry)
