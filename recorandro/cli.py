@@ -10,6 +10,7 @@ from .sessions import ImportFailure, PreflightDenied, import_audio
 from .inspection import InspectionFailure, inspect_session
 from .normalization import NormalizationFailure, normalize_session
 from .segmentation import PlanningFailure, plan_session
+from .exports import ExportFailure, export_session
 from .storage import StorageError
 
 
@@ -54,12 +55,31 @@ def main(argv=None) -> int:
     plan.add_argument("session_id")
     plan.add_argument("--mode", choices=("auto", "force", "off"), default="auto")
     plan.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted planning")
+    export = commands.add_parser("export-session", help="Export verified audio from the latest saved plan")
+    export.add_argument("session_id")
+    export.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted audio export")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "export-session":
+        try:
+            attempt = export_session(config, args.session_id, retry=args.retry)
+        except (ExportFailure, InspectionFailure, NormalizationFailure, PlanningFailure, StorageError, OSError) as exc:
+            known = isinstance(exc, (ExportFailure, InspectionFailure, NormalizationFailure, PlanningFailure))
+            result = {"ok": False, "error": {"code": exc.code if known else "session_access_failed",
+                       "message": str(exc) if known else "Cannot safely access owned audio export files."}}
+            if len(args.session_id) == 32 and all(c in "0123456789abcdef" for c in args.session_id):
+                result["session_id"] = args.session_id
+            if isinstance(exc, ExportFailure) and exc.attempt is not None:
+                result["audio_export"] = exc.attempt
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 1
+        print(json.dumps({"ok": True, "session_id": args.session_id, "audio_export": attempt},
+                         ensure_ascii=False, indent=2, allow_nan=False))
+        return 0
     if args.command == "plan-session":
         try:
             attempt = plan_session(config, args.session_id, mode=args.mode, retry=args.retry)

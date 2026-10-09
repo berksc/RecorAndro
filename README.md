@@ -94,5 +94,28 @@ in one part. There were no qualifying quiet intervals; both Auto boundaries used
 All modes covered source end without errors, silence removal, export, cutting
 or re-normalization. See
 [accepted Android planning evidence](docs/SESSION_SEGMENTATION.md#accepted-android-validation--step-23-final-pass).
-Audio export and packaging remain unimplemented. Step 2.4 requires separate
-authorization.
+
+Step 2.4 adds verified audio export from the **latest completed saved plan**:
+
+```sh
+python -m recorandro export-session "$session_id"
+# Explicit retry after a failed/interrupted export:
+python -m recorandro export-session "$session_id" --retry
+```
+
+It verifies the plan hash and current working-source revision, applies the frozen
+end-only five-second overlap, then independently encodes and fully decodes each
+part before atomic publication. Compatible full-length one-part AAC/M4A or MP3
+results are independent exact byte copies. Completed parts survive failures and
+are verified again before reuse. No replanning or normalization occurs.
+See [export policy, ownership/retry metadata, host evidence and existing-lecture Android validation](docs/SESSION_EXPORT.md).
+Step 2.4 actual-device validation is completed and accepted: **FINAL PASS**,
+with 203/203 Android tests PASS and Python compilation PASS. The existing
+3691.787029-second lecture exported three verified AAC-LC/M4A parts with measured
+durations of 1505, 1505 and 691.787007 seconds. Five-second overlap, no gaps and
+complete source-end coverage were verified; independent SHA-256 and size checks
+passed for all three outputs and the original. Manual listening verification
+was explicitly waived; no listening PASS is claimed. See
+[accepted Android export evidence](docs/SESSION_EXPORT.md#accepted-android-validation--step-24-final-pass).
+ZIP packaging and final manifests remain unimplemented. No commit/push or
+subsequent step without separate authorization.
