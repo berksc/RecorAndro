@@ -1,0 +1,27 @@
+{
+  "status": "skipped_due_to_storage",
+  "attempt_id": "4ddee0fae6bd4576bf985da992961ccc",
+  "source_revision": "8dbe0681c3df2934d251d7446f038bceb60ef37377771d5fad0b7981e44cd0ca",
+  "created_at": "2026-10-11T22:00:26.504938+00:00",
+  "completed_at": null,
+  "error": {
+    "code": "insufficient_storage",
+    "message": "Verified artifacts retained; ZIP storage check denied."
+  },
+  "preflight": {
+    "policy": "actual_stored_zip_v1",
+    "existing_artifact_bytes": 169761,
+    "member_payload_bytes": 179657,
+    "member_count": 12,
+    "estimated_output_bytes": 258931,
+    "temporary_generation_peak_bytes": 258931,
+    "publication_extra_copy_bytes": 0,
+    "reserve_bytes": 268435456,
+    "required_free_bytes": 268694387,
+    "free_bytes": 1,
+    "decision": "deny"
+  },
+  "record_path": "generated/full_archive/4ddee0fae6bd4576bf985da992961ccc/session.json",
+  "record_sha256": "8d64bbd94d9ed3ab162b7caa619fa71e62cbb17cff71d40168f3d3ce079a1edc",
+  "reused": false
+}

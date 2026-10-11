@@ -13,8 +13,9 @@ from .segmentation import PlanningFailure, plan_session
 from .exports import ExportFailure, export_session
 from .storage import StorageError
 from .session_state import session_status
-from .recovery import RecoveryFailure, recover_session, STAGES
+from .recovery import RecoveryFailure, recover_session, RETRY_STAGES
 from .manifests import ManifestFailure, generate_manifests
+from .packages import PackageFailure, package_session, archive_session
 
 
 def log_result(root, ok: bool) -> None:
@@ -65,17 +66,33 @@ def main(argv=None) -> int:
     status.add_argument("session_id")
     manifest = commands.add_parser("manifest-session", help="Publish deterministic documents from verified audio; no audio processing")
     manifest.add_argument("session_id")
+    package = commands.add_parser('package-session', help='Publish verified audio-only part ZIPs')
+    package.add_argument('session_id')
+    archive = commands.add_parser('archive-session', help='Optional full archive from a resolved decision')
+    archive.add_argument('session_id')
+    archive.add_argument('--decision', choices=('on', 'off'), help='Explicitly select or disable archive creation')
     resume = commands.add_parser("resume", help="Resume through implemented audio and manifest stages")
     resume.add_argument("session_id")
     retry = commands.add_parser("retry", help="Retry the required stage; verified stages are unchanged")
     retry.add_argument("session_id")
-    retry.add_argument("stage", nargs="?", choices=STAGES)
+    retry.add_argument("stage", nargs="?", choices=RETRY_STAGES)
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command in ('package-session', 'archive-session'):
+        try:
+            operation = package_session if args.command == 'package-session' else archive_session
+            kwargs = {} if args.command == 'package-session' else {'decision': args.decision}
+            result = operation(config, args.session_id, **kwargs)
+        except (PackageFailure, ManifestFailure, InspectionFailure, StorageError, OSError) as exc:
+            print(json.dumps({'ok': False, 'error': {'code': getattr(exc, 'code', 'session_access_failed'),
+                  'message': str(exc) if isinstance(exc, PackageFailure) else 'Cannot safely access verified package inputs.'}}, indent=2))
+            return 1
+        print(json.dumps({'ok': True, 'session_id': args.session_id, 'result': result}, indent=2))
+        return 1 if result.get('status') == 'failed' else 0
     if args.command == "manifest-session":
         try:
             result = generate_manifests(config, args.session_id)

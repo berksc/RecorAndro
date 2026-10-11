@@ -1,0 +1,64 @@
+{
+  "ALL_PASS": true,
+  "session_id": "4200512d680c449eb2703f578be12082",
+  "current_state": "packaged",
+  "archive_status": {
+    "decision": "explicit_on",
+    "provenance": "explicit_archive_command",
+    "status": "archived",
+    "preflight": {
+      "policy": "actual_stored_zip_v1",
+      "existing_artifact_bytes": 169761,
+      "member_payload_bytes": 179657,
+      "member_count": 12,
+      "estimated_output_bytes": 258931,
+      "temporary_generation_peak_bytes": 258931,
+      "publication_extra_copy_bytes": 0,
+      "reserve_bytes": 268435456,
+      "required_free_bytes": 268694387,
+      "free_bytes": 113150873600,
+      "decision": "allow"
+    },
+    "error": null,
+    "invalid": []
+  },
+  "part_zip_members": {
+    "generated/package_generation/b93002e2c00242f69fc85ef97fd3ecc0/part_01.zip": [
+      "manifest.json",
+      "manifest.md",
+      "part_01.m4a"
+    ]
+  },
+  "audio_and_documents_unchanged": true,
+  "repeat_packages_byte_identical": true,
+  "measurements": {
+    "free_bytes_before_packages": 113152942080,
+    "package_command_elapsed_seconds": 0.563,
+    "free_bytes_after_packages": 113152942080,
+    "part_zip_bytes": 17145,
+    "current_artifact_bytes_before_archive": 352042,
+    "free_bytes_before_archive": 113152577536,
+    "archive_command_elapsed_seconds": 1.047,
+    "free_bytes_after_archive": 113152573440,
+    "full_archive_path": "generated/full_archive/4907c9589f39465aaa5ac5107a975830/full_archive.zip",
+    "full_archive_bytes": 182281,
+    "full_archive_sha256": "2fa7a4023c7d49671d1887b09db485dc376341ec91a06076134992e2ef0ff776",
+    "full_archive_members": [
+      "generated/exports/84754530fb71447ba831015441536579/part_01.m4a",
+      "generated/exports/84754530fb71447ba831015441536579/session.json",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/manifest.json",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/manifest.md",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/parts/part_01/manifest.json",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/parts/part_01/manifest.md",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/processing_report.md",
+      "generated/manifests/916677a50a4143e495b1d7a46135d9ba/session.json",
+      "generated/normalization/5f45527c44e646fb803230b65134c2e0/session.json",
+      "generated/segmentation/a8ed2b67638847279644a8b3cd6c18e8/session.json",
+      "originals/audio/small.wav",
+      "session.json"
+    ],
+    "additional_archive_duplication_bytes": 182281,
+    "archive_to_existing_artifact_ratio": 0.517782
+  },
+  "lecture_default": "OPEN"
+}

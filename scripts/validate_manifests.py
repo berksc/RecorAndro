@@ -34,7 +34,7 @@ def main():
     args = parser.parse_args()
     config = load_config(args.config)
     before = session_status(config, args.session_id)
-    assert before['last_successful_state'] in ('segments_exported', 'manifested'), before['errors']
+    assert before['last_successful_state'] in ('segments_exported', 'manifested', 'packaged'), before['errors']
     assert before['part_count'] == args.expected_parts
     if args.expected_original_sha256:
         assert before['audio']['sha256'] == args.expected_original_sha256
@@ -47,7 +47,7 @@ def main():
     assert audio_before == current
     first = generate_manifests(config, args.session_id)
     after = session_status(config, args.session_id)
-    assert after['current_state'] == 'manifested', after['errors']
+    assert after['last_successful_state'] in ('manifested', 'packaged'), after['errors']
     assert {path: digest(directory / path) for path in current} == audio_before
     document_entries = {e['relative_path']: e for e in after['artifacts'].values()
                         if e['status'] == 'verified' and e['type'] in ('manifest', 'report')}

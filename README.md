@@ -117,8 +117,7 @@ complete source-end coverage were verified; independent SHA-256 and size checks
 passed for all three outputs and the original. Manual listening verification
 was explicitly waived; no listening PASS is claimed. See
 [accepted Android export evidence](docs/SESSION_EXPORT.md#accepted-android-validation--step-24-final-pass).
-ZIP packaging remains unimplemented. No commit/push or
-subsequent step without separate authorization.
+Part 1 acceptance covers the audio engine; package/archive work is described below.
 
 Step 3.1 adds persistent processing progress and a classified artifact registry
 alongside the existing import/stage records. Technical status supports legacy
@@ -145,8 +144,20 @@ operational processing report over verified audio:
 python -m recorandro manifest-session "$session_id"
 ```
 
-Repeated generation is a verified no-op. Resume now reaches `manifested`, the
-highest implemented frontier. See [schema, publication/recovery and exact Redmi
-validation](docs/MANIFEST_SCHEMA.md). Step 4.1 requires independent review, actual
-Redmi validation and explicit FINAL PASS. ZIP packaging, full archives, visual
-processing and final UI remain unimplemented.
+Repeated generation is a verified no-op. See [schema, publication/recovery and exact Redmi
+validation](docs/MANIFEST_SCHEMA.md).
+Visual processing and final UI remain unimplemented.
+
+Step 4.1 received FINAL PASS (265/265 Android tests). Step 4.2 is a candidate
+adding deterministic audio-only part ZIPs and an optional compact full archive:
+
+```sh
+python -m recorandro package-session "$session_id"
+python -m recorandro archive-session "$session_id" --decision on
+```
+
+Resume reaches the required `packaged` frontier. Archive outcomes remain separate
+and nonblocking; unresolved Lecture defaults never trigger archive creation.
+See [package/archive policy, storage check and controlled Redmi measurements](docs/PACKAGE_AND_ARCHIVE.md).
+Independent review, Redmi validation and explicit FINAL PASS remain required.
+No commit/push, visual subsystem, final UI or Part 3 work yet.

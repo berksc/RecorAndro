@@ -104,7 +104,8 @@ def artifact_entry(artifact_id, kind, path, *, status="pending", source=None,
             "protected": protected, "regenerable": not protected}
 
 
-def project_session(directory, record, *, _normalization_intent=False, _audio_only=False):
+def project_session(directory, record, *, _normalization_intent=False, _audio_only=False,
+                    _documents_only=False, _packages_only=False):
     """Read evidence under the caller's existing session lock; never write files.
 
     Hashes verify referenced bytes, not paths or directory scans. No orphan is
@@ -367,6 +368,9 @@ def project_session(directory, record, *, _normalization_intent=False, _audio_on
             result.update(current_state="failed", failed_stage="manifest_generation",
                           error_code="invalid_manifest_evidence", error_message="Manifest set is stale, incomplete or invalid.",
                           retryable=True)
+    if not _audio_only and not _documents_only and result['last_successful_state'] == 'manifested':
+        from .packages import project_packages
+        project_packages(directory, record, result, packages_only=_packages_only)
     return result
 
 

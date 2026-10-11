@@ -1,0 +1,12 @@
+generated/exports/84754530fb71447ba831015441536579/part_01.m4a
+generated/exports/84754530fb71447ba831015441536579/session.json
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/manifest.json
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/manifest.md
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/parts/part_01/manifest.json
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/parts/part_01/manifest.md
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/processing_report.md
+generated/manifests/916677a50a4143e495b1d7a46135d9ba/session.json
+generated/normalization/5f45527c44e646fb803230b65134c2e0/session.json
+generated/segmentation/a8ed2b67638847279644a8b3cd6c18e8/session.json
+originals/audio/small.wav
+session.json

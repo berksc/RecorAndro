@@ -10,12 +10,14 @@ from .exports import export_session, _json_blob, MAX_EXPORT_BYTES, POLICY
 from .session_state import _read, _validate, _folder, project_session, UUID
 from .storage import OwnedDirectory
 from .manifests import generate_manifests
+from .packages import package_session, archive_session
 
-STAGES = ('inspection', 'normalization', 'segmentation', 'audio_export', 'manifest_generation')
+STAGES = ('inspection', 'normalization', 'segmentation', 'audio_export', 'manifest_generation', 'package_generation')
+RETRY_STAGES = STAGES + ('full_archive',)
 MILESTONES = ('imported', 'probed', 'normalized_or_skipped',
-              'segmentation_planned', 'segments_exported', 'manifested')
-SUCCESS = ('probed', 'normalization_succeeded', 'planned', 'export_succeeded', 'manifest_succeeded')
-PENDING = ('probe_pending', 'normalization_pending', 'planning_pending', 'export_pending', 'manifest_pending')
+              'segmentation_planned', 'segments_exported', 'manifested', 'packaged')
+SUCCESS = ('probed', 'normalization_succeeded', 'planned', 'export_succeeded', 'manifest_succeeded', 'succeeded')
+PENDING = ('probe_pending', 'normalization_pending', 'planning_pending', 'export_pending', 'manifest_pending', 'pending')
 REPORTS = {'normalization': 'normalization', 'segmentation': 'segmentation', 'audio_export': 'exports'}
 
 
@@ -29,7 +31,7 @@ def _decision(view):
     frontier = view['last_successful_state']
     if frontier not in MILESTONES:
         classification, next_stage = 'failed_manual_attention', None
-    elif frontier == 'manifested':
+    elif frontier == 'packaged':
         classification, next_stage = 'complete', None
     else:
         next_stage = STAGES[MILESTONES.index(frontier)]
@@ -38,7 +40,7 @@ def _decision(view):
             classification = 'failed_manual_attention'
     code, message = view.get('error_code'), view.get('error_message')
     for stage, succeeded, pending, failed in zip(STAGES, SUCCESS, PENDING,
-            ('probe_failed', 'normalization_failed', 'planning_failed', 'export_failed', 'manifest_failed')):
+            ('probe_failed', 'normalization_failed', 'planning_failed', 'export_failed', 'manifest_failed', 'failed')):
         pointer = view.get(stage)
         if pointer is None:
             continue
@@ -50,7 +52,7 @@ def _decision(view):
             classification, next_stage = 'failed_manual_attention', None
             code, message = 'invalid_recorded_mode', 'Recorded mode needs manual attention; no default substitution.'
             break
-    return {'classification': classification, 'completion_scope': 'implemented_audio_and_manifest_stages',
+    return {'classification': classification, 'completion_scope': 'implemented_audio_documents_packages',
             'current_state': view['current_state'], 'last_successful_state': frontier,
             'next_stage': next_stage, 'error_code': code,
             'error_message': message, 'part_count': view['verified_part_count']}
@@ -156,7 +158,7 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
     """
     if not isinstance(session_id, str) or not UUID.fullmatch(session_id):
         raise RecoveryFailure('invalid_session_id', 'Use an existing session identifier.')
-    if stage is not None and stage not in STAGES:
+    if stage is not None and stage not in RETRY_STAGES:
         raise RecoveryFailure('invalid_retry_stage', 'Retry stage must name an implemented stage.')
     with ExitStack() as stack:
         if not config.data_root.is_dir():
@@ -190,7 +192,9 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
             reconciled = []
         decision = _decision(view)
         performed = []
-        if not inspect_only and decision['classification'] != 'failed_manual_attention':
+        if stage == 'full_archive' and view['last_successful_state'] != 'packaged':
+            raise RecoveryFailure('prerequisite_unverified', 'Verify part packages before retrying a full archive.')
+        if not inspect_only and decision['classification'] != 'failed_manual_attention' and stage != 'full_archive':
             if stage is not None and decision['next_stage'] is not None:
                 if STAGES.index(stage) > STAGES.index(decision['next_stage']):
                     raise RecoveryFailure('prerequisite_unverified', 'Retry the earlier unverified prerequisite first.')
@@ -205,7 +209,7 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
                 try:
                     operation = {'inspection': inspect_session, 'normalization': normalize_session,
                                  'segmentation': plan_session, 'audio_export': export_session,
-                                 'manifest_generation': generate_manifests}[current]
+                                 'manifest_generation': generate_manifests, 'package_generation': package_session}[current]
                     kwargs = {'retry': True, '_lock_token': token}
                     if current in ('normalization', 'segmentation'):
                         kwargs['mode'] = mode
@@ -213,15 +217,34 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
                     performed.append(current)
                 except (ValueError, OSError) as exc:
                     record = _read(directory)
-                    decision = _decision(project_session(directory, record))
+                    view = project_session(directory, record)
+                    decision = _decision(view)
                     decision.update(classification='failed_retryable' if decision['classification'] != 'failed_manual_attention'
                                     else 'failed_manual_attention', error_code=getattr(exc, 'code', 'stage_access_failed'),
                                     error_message=str(exc) if isinstance(exc, ValueError) else 'Cannot safely access stage storage.')
                     break
                 record = _read(directory)
-                decision = _decision(project_session(directory, record))
+                view = project_session(directory, record)
+                decision = _decision(view)
                 if stage is not None or decision['classification'] == 'failed_manual_attention':
                     break
                 if decision['next_stage'] == current:
                     raise RecoveryFailure('stage_not_verified', 'Stage returned without verified completion.')
-        return dict(decision, session_id=session_id, performed_stages=performed, reconciled_stages=reconciled)
+        if not inspect_only and stage in (None, 'full_archive'):
+            record = _read(directory)
+            view = project_session(directory, record)
+            archive = view['archive_status']
+            if view['last_successful_state'] == 'packaged' and archive.get('decision') == 'explicit_on' and (
+                    stage == 'full_archive' or archive.get('status') not in ('archived', 'skipped_due_to_storage')):
+                try:
+                    archive_session(config, session_id, retry=True, _lock_token=token)
+                    performed.append('full_archive')
+                    view = project_session(directory, _read(directory))
+                    decision = _decision(view)
+                except (ValueError, OSError) as exc:
+                    # Optional metadata/storage failure never erases the
+                    # verified core or causes an automatic media retry.
+                    view['archive_status'] = dict(archive, status='failed_nonblocking',
+                        error={'code': getattr(exc, 'code', 'archive_persistence_failed')})
+        return dict(decision, session_id=session_id, performed_stages=performed, reconciled_stages=reconciled,
+                    archive_status=view['archive_status'])

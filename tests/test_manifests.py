@@ -51,7 +51,7 @@ class ManifestTests(ExportFixture):
         self.assertTrue(generate_manifests(self.config, self.sid)['reused'])
         self.assertEqual(self.blobs(), first)
         self.assertEqual((self.directory / 'session.json').read_bytes(), canonical)
-        self.assertEqual(recover_session(self.config, self.sid)['performed_stages'], [])
+        self.assertEqual(recover_session(self.config, self.sid, stage='manifest_generation')['performed_stages'], [])
         self.assertEqual(self.audio_bytes(), audio)
         self.assertEqual(self.original.read_bytes(), self.contents)
         for key in ('audio', 'inspection', 'normalization', 'segmentation', 'audio_export', 'state'):
@@ -142,8 +142,8 @@ class ManifestTests(ExportFixture):
         self.assertEqual(session_status(self.config, self.sid)['current_state'], 'failed')
         self.commands.clear()
         result = recover_session(self.config, self.sid)
-        self.assertEqual(result['performed_stages'], ['manifest_generation'])
-        self.assertEqual(result['current_state'], 'manifested')
+        self.assertEqual(result['performed_stages'], ['manifest_generation', 'package_generation'])
+        self.assertEqual(result['current_state'], 'packaged')
         self.assertEqual(self.commands, [])
         fresh = self.journal()
         self.assertEqual(self.blobs(), before)
@@ -195,7 +195,7 @@ class ManifestTests(ExportFixture):
         # A partial staging file is unrelated to final member evidence.
         (self.directory / 'temp' / 'partial.tmp').write_bytes(b'{')
         result = recover_session(self.config, self.sid)
-        self.assertEqual(result['current_state'], 'manifested')
+        self.assertEqual(result['current_state'], 'packaged')
         self.assertEqual(self.journal()['files']['manifest.json']['relative_path'], prior['files']['manifest.json']['relative_path'])
 
     def test_crash_after_complete_publication_adopts_without_new_attempt(self):
@@ -268,7 +268,7 @@ generate_manifests(Config(Path(sys.argv[1])), sys.argv[2])
             child.kill()
             child.communicate(timeout=10)
             self.assertEqual(session_status(self.config, self.sid)['current_state'], 'segments_exported')
-            self.assertEqual(recover_session(self.config, self.sid)['current_state'], 'manifested')
+            self.assertEqual(recover_session(self.config, self.sid)['current_state'], 'packaged')
             self.assertEqual(self.original.read_bytes(), self.contents)
         finally:
             if child.poll() is None:
