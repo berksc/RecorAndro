@@ -9,12 +9,13 @@ from .segmentation import plan_session, MAX_PLAN_BYTES
 from .exports import export_session, _json_blob, MAX_EXPORT_BYTES, POLICY
 from .session_state import _read, _validate, _folder, project_session, UUID
 from .storage import OwnedDirectory
+from .manifests import generate_manifests
 
-STAGES = ('inspection', 'normalization', 'segmentation', 'audio_export')
+STAGES = ('inspection', 'normalization', 'segmentation', 'audio_export', 'manifest_generation')
 MILESTONES = ('imported', 'probed', 'normalized_or_skipped',
-              'segmentation_planned', 'segments_exported')
-SUCCESS = ('probed', 'normalization_succeeded', 'planned', 'export_succeeded')
-PENDING = ('probe_pending', 'normalization_pending', 'planning_pending', 'export_pending')
+              'segmentation_planned', 'segments_exported', 'manifested')
+SUCCESS = ('probed', 'normalization_succeeded', 'planned', 'export_succeeded', 'manifest_succeeded')
+PENDING = ('probe_pending', 'normalization_pending', 'planning_pending', 'export_pending', 'manifest_pending')
 REPORTS = {'normalization': 'normalization', 'segmentation': 'segmentation', 'audio_export': 'exports'}
 
 
@@ -28,7 +29,7 @@ def _decision(view):
     frontier = view['last_successful_state']
     if frontier not in MILESTONES:
         classification, next_stage = 'failed_manual_attention', None
-    elif frontier == 'segments_exported':
+    elif frontier == 'manifested':
         classification, next_stage = 'complete', None
     else:
         next_stage = STAGES[MILESTONES.index(frontier)]
@@ -37,7 +38,7 @@ def _decision(view):
             classification = 'failed_manual_attention'
     code, message = view.get('error_code'), view.get('error_message')
     for stage, succeeded, pending, failed in zip(STAGES, SUCCESS, PENDING,
-            ('probe_failed', 'normalization_failed', 'planning_failed', 'export_failed')):
+            ('probe_failed', 'normalization_failed', 'planning_failed', 'export_failed', 'manifest_failed')):
         pointer = view.get(stage)
         if pointer is None:
             continue
@@ -49,7 +50,7 @@ def _decision(view):
             classification, next_stage = 'failed_manual_attention', None
             code, message = 'invalid_recorded_mode', 'Recorded mode needs manual attention; no default substitution.'
             break
-    return {'classification': classification, 'completion_scope': 'implemented_audio_stages',
+    return {'classification': classification, 'completion_scope': 'implemented_audio_and_manifest_stages',
             'current_state': view['current_state'], 'last_successful_state': frontier,
             'next_stage': next_stage, 'error_code': code,
             'error_message': message, 'part_count': view['verified_part_count']}
@@ -148,7 +149,7 @@ def _reconcile(directory, record):
 
 
 def recover_session(config, session_id, *, stage=None, inspect_only=False):
-    """Resume to the implemented audio frontier, or retry one required stage.
+    """Resume to the implemented audio/document frontier, or retry a stage.
 
     Completed stage retry is a verified no-op. Import recovery needs the user's
     source selection; no external path is reconstructed or original overwritten.
@@ -156,7 +157,7 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
     if not isinstance(session_id, str) or not UUID.fullmatch(session_id):
         raise RecoveryFailure('invalid_session_id', 'Use an existing session identifier.')
     if stage is not None and stage not in STAGES:
-        raise RecoveryFailure('invalid_retry_stage', 'Retry stage must be inspection, normalization, segmentation or audio_export.')
+        raise RecoveryFailure('invalid_retry_stage', 'Retry stage must name an implemented stage.')
     with ExitStack() as stack:
         if not config.data_root.is_dir():
             raise RecoveryFailure('session_unavailable', 'Configured session data root is unavailable.')
@@ -203,7 +204,8 @@ def recover_session(config, session_id, *, stage=None, inspect_only=False):
                     raise RecoveryFailure('invalid_recorded_mode', 'Recorded mode needs manual correction; no default substitution.')
                 try:
                     operation = {'inspection': inspect_session, 'normalization': normalize_session,
-                                 'segmentation': plan_session, 'audio_export': export_session}[current]
+                                 'segmentation': plan_session, 'audio_export': export_session,
+                                 'manifest_generation': generate_manifests}[current]
                     kwargs = {'retry': True, '_lock_token': token}
                     if current in ('normalization', 'segmentation'):
                         kwargs['mode'] = mode

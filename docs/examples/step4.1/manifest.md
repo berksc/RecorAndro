@@ -1,0 +1,266 @@
+# Session manifest
+
+Session: e6a973df4fdb4c199f49dc2ec00e8ef1
+
+GLOBAL uses the immutable source timeline origin. Nominal intervals own lecture content once; export intervals extend the preceding end by five seconds, without moving the next start. LOCAL is playback within this part; overlap adds no lecture content.
+
+| Part | Filename | Nominal ownership (GLOBAL) | Export (GLOBAL) | LOCAL duration (s) | Overlap before / after (s) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | part_01.m4a | 00:00:00.000–00:00:03.000 | 00:00:00.000–00:00:03.000 | 3.0 | 0 / 0 |
+
+## Canonical data
+
+```json
+{
+  "artifacts": [
+    {
+      "artifact_id": "audio_part:b6e09fdac6a54279a14942920aa1c30b:1",
+      "classification": "regenerable",
+      "relative_path": "generated/exports/b6e09fdac6a54279a14942920aa1c30b/part_01.m4a",
+      "revision_id": "b6e09fdac6a54279a14942920aa1c30b",
+      "sha256": "fbe7fd45c9604b47b6222cc210563618575f571958c7037655ed4b1e184f32b5",
+      "size_bytes": 13678,
+      "source_artifact_id": "original_audio",
+      "status": "verified",
+      "type": "audio_part"
+    },
+    {
+      "artifact_id": "exports_report:b6e09fdac6a54279a14942920aa1c30b",
+      "classification": "regenerable",
+      "relative_path": "generated/exports/b6e09fdac6a54279a14942920aa1c30b/session.json",
+      "revision_id": "b6e09fdac6a54279a14942920aa1c30b",
+      "sha256": "a377c47827e6c0e918209f30c910d64b489e76a341defd052710f632e52d829f",
+      "size_bytes": 6546,
+      "source_artifact_id": "original_audio",
+      "status": "verified",
+      "type": "export_report"
+    },
+    {
+      "artifact_id": "normalization_report:42cf4dea67d8412d9d063d8a0430f692",
+      "classification": "regenerable",
+      "relative_path": "generated/normalization/42cf4dea67d8412d9d063d8a0430f692/session.json",
+      "revision_id": "42cf4dea67d8412d9d063d8a0430f692",
+      "sha256": "febd9b17061b8d671fe4aface9a47048c2c533a55d5d9bb48268882e9db3cef4",
+      "size_bytes": 5028,
+      "source_artifact_id": "original_audio",
+      "status": "verified",
+      "type": "normalization_report"
+    },
+    {
+      "artifact_id": "original_audio",
+      "classification": "protected",
+      "relative_path": "originals/audio/small.wav",
+      "revision_id": null,
+      "sha256": "160acdca055933bc4eaa1dc3a1ba5f63ed71e00020644e5ebd05a3c66b9623fa",
+      "size_bytes": 96044,
+      "source_artifact_id": null,
+      "status": "verified",
+      "type": "original_audio"
+    },
+    {
+      "artifact_id": "segmentation_report:7e827378123c46368bfa6c85e18b16d5",
+      "classification": "regenerable",
+      "relative_path": "generated/segmentation/7e827378123c46368bfa6c85e18b16d5/session.json",
+      "revision_id": "7e827378123c46368bfa6c85e18b16d5",
+      "sha256": "7eb66b7acf4bf166d21ccf29a3e6ef1306078edb0593b567bfa8ae40ae3d4b76",
+      "size_bytes": 4148,
+      "source_artifact_id": "original_audio",
+      "status": "verified",
+      "type": "segmentation_report"
+    }
+  ],
+  "completion": {
+    "archive": "not_implemented",
+    "audio": "segments_exported",
+    "documents": "manifested",
+    "globally_complete": false,
+    "packaging": "not_implemented"
+  },
+  "created_at": "2026-10-11T19:15:34.382514+00:00",
+  "errors": [],
+  "integrity": {
+    "all_parts_verified": true,
+    "coverage": {
+      "no_gaps": true,
+      "overlap_seconds": 0,
+      "overlap_verified": true,
+      "part_count": 1,
+      "source_end_covered": true,
+      "source_end_seconds": 3.0,
+      "source_start_seconds": 0,
+      "verified": true
+    },
+    "original_verified": true,
+    "working_source_verified": true
+  },
+  "normalization": {
+    "gain_db": 0.0,
+    "normalized_artifact": null,
+    "reason": "normalization_off",
+    "requested_mode": "off",
+    "result": "skipped",
+    "source_artifact": {
+      "artifact_id": "original_audio",
+      "managed_path": "originals/audio/small.wav",
+      "sha256": "160acdca055933bc4eaa1dc3a1ba5f63ed71e00020644e5ebd05a3c66b9623fa",
+      "size_bytes": 96044
+    }
+  },
+  "original": {
+    "original_filename": "small.wav",
+    "sha256": "160acdca055933bc4eaa1dc3a1ba5f63ed71e00020644e5ebd05a3c66b9623fa",
+    "size_bytes": 96044
+  },
+  "parts": [
+    {
+      "filename": "part_01.m4a",
+      "global_end_human": "00:00:03.000",
+      "global_end_seconds": 3.0,
+      "global_start_human": "00:00:00.000",
+      "global_start_seconds": 0.0,
+      "local_duration_seconds": 3.0,
+      "local_end_seconds": 3.0,
+      "local_start_seconds": 0,
+      "media": {
+        "audio_codec": "aac",
+        "channels": 1,
+        "container": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration_seconds": 3.0,
+        "sample_rate": 16000
+      },
+      "nominal_end_human": "00:00:03.000",
+      "nominal_end_seconds": 3.0,
+      "nominal_start_human": "00:00:00.000",
+      "nominal_start_seconds": 0.0,
+      "overlap_after_seconds": 0,
+      "overlap_before_seconds": 0,
+      "part_index": 1,
+      "schema_version": 1,
+      "session_id": "e6a973df4fdb4c199f49dc2ec00e8ef1",
+      "sha256": "fbe7fd45c9604b47b6222cc210563618575f571958c7037655ed4b1e184f32b5",
+      "size_bytes": 13678,
+      "source_artifact": {
+        "kind": "original",
+        "managed_path": "originals/audio/small.wav",
+        "normalization_attempt_id": "42cf4dea67d8412d9d063d8a0430f692",
+        "sha256": "160acdca055933bc4eaa1dc3a1ba5f63ed71e00020644e5ebd05a3c66b9623fa",
+        "size_bytes": 96044
+      },
+      "timeline_note": "GLOBAL uses the immutable source timeline origin. Nominal intervals own lecture content once; export intervals extend the preceding end by five seconds, without moving the next start. LOCAL is playback within this part; overlap adds no lecture content."
+    }
+  ],
+  "probe": {
+    "audio_codec": "pcm_s16le",
+    "channels": 1,
+    "container": "wav",
+    "duration_seconds": 3.0,
+    "sample_rate": 16000
+  },
+  "profile": "lecture",
+  "schema_version": 1,
+  "segmentation": {
+    "decision": "auto_single_part",
+    "mode_fulfilled": true,
+    "mode_requested": "auto",
+    "overlap_seconds": 5,
+    "part_count": 1,
+    "plan_kind": "single",
+    "policy_version": "useful_nominal_plan_v1",
+    "search_window_seconds": [
+      1200,
+      1620
+    ],
+    "source_duration_seconds": 3.0,
+    "target_seconds": 1500,
+    "tiny_part_avoidance_adjustments": [],
+    "useful_multi_part_seconds": [
+      600,
+      1620
+    ]
+  },
+  "session_id": "e6a973df4fdb4c199f49dc2ec00e8ef1",
+  "source_revisions": {
+    "export": {
+      "attempt_id": "b6e09fdac6a54279a14942920aa1c30b",
+      "record_path": "generated/exports/b6e09fdac6a54279a14942920aa1c30b/session.json",
+      "record_sha256": "a377c47827e6c0e918209f30c910d64b489e76a341defd052710f632e52d829f"
+    },
+    "inspection": "191e67c6afb841e3b1791e345248d77d",
+    "normalization": "42cf4dea67d8412d9d063d8a0430f692",
+    "segmentation": {
+      "attempt_id": "7e827378123c46368bfa6c85e18b16d5",
+      "policy_version": "useful_nominal_plan_v1",
+      "record_path": "generated/segmentation/7e827378123c46368bfa6c85e18b16d5/session.json",
+      "sha256": "7eb66b7acf4bf166d21ccf29a3e6ef1306078edb0593b567bfa8ae40ae3d4b76"
+    }
+  },
+  "storage_preflight": {
+    "audio_export": {
+      "decision": "allow",
+      "estimated_required_bytes": 335699856,
+      "free_bytes": 1000000000000,
+      "headroom_bytes": 268435456,
+      "metadata_allowance_bytes": 67108864,
+      "remaining_audio_bytes": 155536,
+      "reservation": false,
+      "temporary_publication": "same_inode_move_no_full_copy_duplication"
+    },
+    "import": {
+      "archive": {
+        "provenance": "explicit_request",
+        "reserve_archive": false,
+        "resolved": "not_requested",
+        "selection": "not_requested"
+      },
+      "assumptions": [
+        "No duration or codec inferred from source bytes or suffix",
+        "192000 bit/s requested stereo AAC plus 25% size allowance",
+        "64 KiB per estimated container; 5 seconds per part allowance",
+        "Generated audio also budgets an independent full-source byte copy",
+        "ZIP may duplicate all generated bytes without compression savings",
+        "Archive reserves two copies of original + normalized + generated",
+        "One largest artifact reserved for temporary work; photos excluded",
+        "Unresolved archive default reserves archive without selecting it",
+        "Not a disk-space guarantee; later verified-media preflight required"
+      ],
+      "components": {
+        "generated_audio": 521072,
+        "immutable_original": 96044,
+        "optional_full_archive": 0,
+        "package_zip_duplication": 521072,
+        "possible_normalized": 155536,
+        "temporary_work": 521072
+      },
+      "decision": "allow",
+      "estimated_required_bytes": 270250252,
+      "free_bytes": 1000000000000,
+      "headroom_policy": {
+        "minimum_bytes": 268435456,
+        "reserved_bytes": 268435456,
+        "subtotal_percent": 20
+      },
+      "part_count_allowance": 2,
+      "policy_version": 1,
+      "provisioning_bound": {
+        "provenance": "user_supplied",
+        "seconds": 3,
+        "verified_media_duration": false
+      },
+      "source_bytes": 96044
+    },
+    "normalization": null
+  },
+  "timeline": {
+    "note": "GLOBAL uses the immutable source timeline origin. Nominal intervals own lecture content once; export intervals extend the preceding end by five seconds, without moving the next start. LOCAL is playback within this part; overlap adds no lecture content.",
+    "origin": "immutable_original_source",
+    "original_duration_seconds": 3.0,
+    "ownership_duration_seconds": 3.0,
+    "working_source_end_seconds": 3.0
+  },
+  "visual_count": 0,
+  "visual_status": "none",
+  "warnings": [
+    "storage_estimate_unverified"
+  ]
+}
+```

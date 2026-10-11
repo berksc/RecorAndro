@@ -104,7 +104,7 @@ def artifact_entry(artifact_id, kind, path, *, status="pending", source=None,
             "protected": protected, "regenerable": not protected}
 
 
-def project_session(directory, record, *, _normalization_intent=False):
+def project_session(directory, record, *, _normalization_intent=False, _audio_only=False):
     """Read evidence under the caller's existing session lock; never write files.
 
     Hashes verify referenced bytes, not paths or directory scans. No orphan is
@@ -352,6 +352,21 @@ def project_session(directory, record, *, _normalization_intent=False):
                   package_status={"status": "not_implemented"},
                   archive_status={"status": "not_implemented",
                                   "selection": record.get("storage_preflight", {}).get("archive")})
+    if not _audio_only and frontier == "segments_exported" and record.get("manifest_generation") is not None:
+        from .manifests import verify_stage
+        pointer = record["manifest_generation"]
+        result["active_stage"] = "manifest_generation"
+        try:
+            _require(isinstance(pointer, dict) and pointer.get("status") in
+                     ("manifest_pending", "manifest_succeeded", "manifest_failed"), "Invalid manifest status")
+            _require(pointer["status"] != "manifest_failed", "Manifest generation failed")
+            if pointer["status"] == "manifest_succeeded":
+                registry.update(verify_stage(directory, record, result))
+                result.update(current_state="manifested", last_successful_state="manifested", active_stage=None)
+        except (ValueError, OSError, KeyError, TypeError, AttributeError):
+            result.update(current_state="failed", failed_stage="manifest_generation",
+                          error_code="invalid_manifest_evidence", error_message="Manifest set is stale, incomplete or invalid.",
+                          retryable=True)
     return result
 
 

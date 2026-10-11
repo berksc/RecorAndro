@@ -42,7 +42,7 @@ class RecoveryTests(ExportFixture):
         self.external.unlink()
         result = self.resume()
         self.assertEqual(result['classification'], 'complete')
-        self.assertEqual(result['current_state'], 'segments_exported')
+        self.assertEqual(result['current_state'], 'manifested')
         before = (self.directory / 'session.json').read_bytes()
         self.commands.clear()
         self.assertEqual(self.resume()['performed_stages'], [])
@@ -154,7 +154,7 @@ class RecoveryTests(ExportFixture):
         self.write_record(record)
         with patch('recorandro.segmentation.plan_boundaries', side_effect=KeyboardInterrupt()):
             self.assertEqual(self.resume()['classification'], 'failed_retryable')
-        self.assertEqual(self.resume()['performed_stages'], ['segmentation', 'audio_export'])
+        self.assertEqual(self.resume()['performed_stages'], ['segmentation', 'audio_export', 'manifest_generation'])
 
     def test_incomplete_import_requires_source_selection(self):
         record = self.record()
@@ -174,14 +174,14 @@ class RecoveryTests(ExportFixture):
         files = list((self.directory / 'generated/exports' / old['attempt_id']).glob('part_*'))
         self.configure_duration(3660)  # new inspection/normalization revision, same bytes
         result = self.resume()
-        self.assertEqual(result['performed_stages'], ['segmentation', 'audio_export'])
+        self.assertEqual(result['performed_stages'], ['segmentation', 'audio_export', 'manifest_generation'])
         self.assertTrue(all(p.exists() for p in files))
         self.assertEqual(self.original.read_bytes(), self.contents)
 
     def test_corrupt_plan_regenerated_and_original_mismatch_manual(self):
         pointer = self.record()['segmentation']
         (self.directory / pointer['record_path']).write_text('{partial')
-        self.assertEqual(self.resume()['performed_stages'], ['segmentation', 'audio_export'])
+        self.assertEqual(self.resume()['performed_stages'], ['segmentation', 'audio_export', 'manifest_generation'])
         self.original.chmod(0o600)
         self.original.write_bytes(b'original changed externally')
         before = (self.directory / 'session.json').read_bytes()
@@ -205,7 +205,9 @@ class RecoveryTests(ExportFixture):
         before = (self.directory / 'session.json').read_bytes()
         self.assertEqual(self.resume(stage='normalization')['performed_stages'], [])
         self.assertEqual((self.directory / 'session.json').read_bytes(), before)
-        self.assertEqual(self.resume(stage='audio_export')['classification'], 'complete')
+        exported = self.resume(stage='audio_export')
+        self.assertEqual(exported['classification'], 'resumable')
+        self.assertEqual(exported['next_stage'], 'manifest_generation')
         record = self.record()
         record.pop('segmentation')
         self.write_record(record)
@@ -298,7 +300,7 @@ class ControlledInterruptionTests(unittest.TestCase):
                         normalized.write_bytes(b'corrupt')
                     self.assertEqual(recover_session(config, sid, inspect_only=True)['last_successful_state'], 'probed')
                     result = recover_session(config, sid)
-                self.assertEqual(result['performed_stages'], ['normalization', 'segmentation', 'audio_export'])
+                self.assertEqual(result['performed_stages'], ['normalization', 'segmentation', 'audio_export', 'manifest_generation'])
                 self.assertEqual(result['classification'], 'complete')
                 self.assertTrue(old_part.exists())
                 original = directory / imported['audio']['managed_path']
@@ -363,7 +365,7 @@ class ControlledInterruptionTests(unittest.TestCase):
                 self.assertIn('segmentation', result['reconciled_stages'])
                 self.assertNotIn('segmentation', result['performed_stages'])
             if checkpoint == 'export_report':
-                self.assertEqual(result['performed_stages'], [])
+                self.assertEqual(result['performed_stages'], ['manifest_generation'])
             if checkpoint == 'export_publish':
                 pointer = json.loads((directory / 'session.json').read_text())['audio_export']
                 report = json.loads((directory / pointer['record_path']).read_text())

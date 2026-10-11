@@ -14,6 +14,7 @@ from .exports import ExportFailure, export_session
 from .storage import StorageError
 from .session_state import session_status
 from .recovery import RecoveryFailure, recover_session, STAGES
+from .manifests import ManifestFailure, generate_manifests
 
 
 def log_result(root, ok: bool) -> None:
@@ -62,7 +63,9 @@ def main(argv=None) -> int:
     export.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted audio export")
     status = commands.add_parser("status", help="Read verified processing progress and artifact registry")
     status.add_argument("session_id")
-    resume = commands.add_parser("resume", help="Resume from the last verified audio stage")
+    manifest = commands.add_parser("manifest-session", help="Publish deterministic documents from verified audio; no audio processing")
+    manifest.add_argument("session_id")
+    resume = commands.add_parser("resume", help="Resume through implemented audio and manifest stages")
     resume.add_argument("session_id")
     retry = commands.add_parser("retry", help="Retry the required stage; verified stages are unchanged")
     retry.add_argument("session_id")
@@ -73,6 +76,16 @@ def main(argv=None) -> int:
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "manifest-session":
+        try:
+            result = generate_manifests(config, args.session_id)
+        except (ManifestFailure, InspectionFailure, StorageError, OSError) as exc:
+            print(json.dumps({"ok": False, "error": {"code": getattr(exc, "code", "session_access_failed"),
+                              "message": str(exc) if isinstance(exc, (ManifestFailure, InspectionFailure)) else
+                              "Cannot safely access owned manifest files."}}, ensure_ascii=False, indent=2))
+            return 1
+        print(json.dumps({"ok": True, "session_id": args.session_id, "manifest_generation": result}, indent=2))
+        return 0
     if args.command in ("resume", "retry"):
         try:
             result = recover_session(config, args.session_id, stage=getattr(args, "stage", None))

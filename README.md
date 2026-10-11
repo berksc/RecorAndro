@@ -117,7 +117,7 @@ complete source-end coverage were verified; independent SHA-256 and size checks
 passed for all three outputs and the original. Manual listening verification
 was explicitly waived; no listening PASS is claimed. See
 [accepted Android export evidence](docs/SESSION_EXPORT.md#accepted-android-validation--step-24-final-pass).
-ZIP packaging and final manifests remain unimplemented. No commit/push or
+ZIP packaging remains unimplemented. No commit/push or
 subsequent step without separate authorization.
 
 Step 3.1 adds persistent processing progress and a classified artifact registry
@@ -137,6 +137,16 @@ python -m recorandro retry "$session_id" audio_export
 ```
 
 See [recovery decisions, publication evidence, locks and controlled Android interruption tests](docs/SESSION_RECOVERY.md).
-Step 3.2 is an uncommitted candidate requiring independent review, actual Redmi
-validation and explicit FINAL PASS. Manifests, ZIP packaging, full archives,
-visual recovery and final UI remain unimplemented.
+Steps 3.1 and 3.2 received FINAL PASS (Android 225/225 and 250/250 respectively).
+Step 4.1 adds deterministic session/part JSON and Markdown manifests and an
+operational processing report over verified audio:
+
+```sh
+python -m recorandro manifest-session "$session_id"
+```
+
+Repeated generation is a verified no-op. Resume now reaches `manifested`, the
+highest implemented frontier. See [schema, publication/recovery and exact Redmi
+validation](docs/MANIFEST_SCHEMA.md). Step 4.1 requires independent review, actual
+Redmi validation and explicit FINAL PASS. ZIP packaging, full archives, visual
+processing and final UI remain unimplemented.
