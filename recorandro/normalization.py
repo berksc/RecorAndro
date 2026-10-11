@@ -331,7 +331,7 @@ def _new_attempt(session_id, mode, retry):
             "warnings": [], "error": None}
 
 
-def normalize_session(config, session_id, *, mode="auto", retry=False):
+def normalize_session(config, session_id, *, mode="auto", retry=False, _lock_token=None):
     if mode not in ("auto", "force", "off"):
         fail("invalid_mode", "Mode must be auto, force or off.")
     if not isinstance(session_id, str) or not re.fullmatch(r"[0-9a-f]{32}", session_id):
@@ -343,7 +343,7 @@ def normalize_session(config, session_id, *, mode="auto", retry=False):
         root = stack.enter_context(OwnedDirectory.root(config.data_root))
         sessions = _existing_child(stack, root, "sessions")
         directory = _existing_child(stack, sessions, session_id)
-        stack.enter_context(_inspection_lock(directory))
+        stack.enter_context(_inspection_lock(directory, _lock_token))
         record = _read_record(directory, session_id)
         previous = record.get("normalization")
         if previous is not None and (not isinstance(previous, dict) or previous.get("status") not in
@@ -463,6 +463,15 @@ def normalize_session(config, session_id, *, mode="auto", retry=False):
                         os.fchmod(out_fd, 0o400)
                 # Close the verified read handle before the existing Windows
                 # no-replace move; Android retains pinned directory descriptors.
+                candidate = {"managed_path": f"generated/normalization/{attempt['attempt_id']}/normalized.m4a",
+                             "size_bytes": size, "sha256": digest, "media": output_media,
+                             "full_decode_verified": True}
+                # Persist verified publication intent in the existing attempt report.
+                # Canonical metadata stays pending until the final name verifies.
+                ready = dict(attempt, completed_at=datetime.now(timezone.utc).isoformat(),
+                             elapsed_seconds=round(time.monotonic() - started, 6))
+                _success(ready, candidate)
+                owned.atomic_json(dict(attempt, publication_intent=ready))
                 temp.publish("pending.m4a", "normalized.m4a", owned)
                 # Native rename changes ctime, but inode/bytes must remain identical.
                 final_fd = owned.open("normalized.m4a", os.O_RDONLY)
@@ -498,13 +507,7 @@ def normalize_session(config, session_id, *, mode="auto", retry=False):
         if failure:
             attempt.update(status="normalization_failed", error={"code": failure.code, "message": str(failure)})
         else:
-            attempt.update(status="normalization_succeeded", output=candidate,
-                           normalization_applied=candidate is not None, encoding_applied=candidate is not None,
-                           applied_gain_db=attempt["gain_db"] if candidate else 0,
-                           output_source="normalized" if candidate else "original",
-                           working_source=candidate if candidate else attempt["input"],
-                           output_duration_seconds=candidate["media"]["duration_seconds"] if candidate else
-                           attempt["input_duration_seconds"])
+            _success(attempt, candidate)
         try:
             # Per-attempt history first, then latest-session pointer. They are not
             # a multi-file transaction; the session must report failure if it fails.
@@ -515,6 +518,16 @@ def normalize_session(config, session_id, *, mode="auto", retry=False):
         if failure:
             raise NormalizationFailure(failure.code, str(failure), attempt)
         return attempt
+
+
+def _success(attempt, candidate):
+    attempt.update(status="normalization_succeeded", output=candidate,
+                   normalization_applied=candidate is not None, encoding_applied=candidate is not None,
+                   applied_gain_db=attempt["gain_db"] if candidate else 0,
+                   output_source="normalized" if candidate else "original",
+                   working_source=candidate if candidate else attempt["input"],
+                   output_duration_seconds=candidate["media"]["duration_seconds"] if candidate else
+                   attempt["input_duration_seconds"])
 
 
 def _error(exc):

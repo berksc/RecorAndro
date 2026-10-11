@@ -299,7 +299,7 @@ def _reuse_candidates(stack, generated, previous, reference, source):
             return {}, True
         candidates = {}
         for part in saved["parts"]:
-            if isinstance(part, dict) and type(part.get("part_index")) is int and part.get("status") == "verified":
+            if isinstance(part, dict) and type(part.get("part_index")) is int and part.get("status") in ("verified", "publication_ready"):
                 if part["part_index"] in candidates:
                     return {}, True
                 candidates[part["part_index"]] = part
@@ -320,7 +320,7 @@ def _part_folder(stack, exports, part):
     return _existing_child(stack, exports, pieces[2])
 
 
-def export_session(config, session_id, *, retry=False):
+def export_session(config, session_id, *, retry=False, _lock_token=None):
     """Reusable blocking operation; CLI/UI callers receive identical structured facts."""
     if not isinstance(session_id, str) or not UUID.fullmatch(session_id):
         fail("invalid_session_id", "Export requires an existing imported session identifier.")
@@ -331,7 +331,7 @@ def export_session(config, session_id, *, retry=False):
         root = stack.enter_context(OwnedDirectory.root(config.data_root))
         sessions = _existing_child(stack, root, "sessions")
         directory = _existing_child(stack, sessions, session_id)
-        stack.enter_context(_inspection_lock(directory))
+        stack.enter_context(_inspection_lock(directory, _lock_token))
         record = _read_record(directory, session_id)
         previous = record.get("audio_export")
         if previous is not None and (not isinstance(previous, dict) or previous.get("status") not in
@@ -473,6 +473,12 @@ def export_session(config, session_id, *, retry=False):
                         os.fsync(fd)
                         if os.name == "posix":
                             os.fchmod(fd, 0o400)
+                    part.update(status="publication_ready", managed_path=f"generated/exports/{attempt_id}/{part['filename']}",
+                                duration_seconds=out_media["duration_seconds"], media=out_media, verification=verified, **actual)
+                    # Journal verified intent before the no-replace move. This is
+                    # a pending attempt, never a completed set; recovery rechecks
+                    # final bytes before allowing these candidates to be reused.
+                    owned.atomic_json(result)
                     temp.publish(pending_leaf, part["filename"], owned)
                     fd = owned.open(part["filename"], os.O_RDONLY)
                     with os.fdopen(fd, "rb") as final:

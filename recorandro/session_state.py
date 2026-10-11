@@ -104,7 +104,7 @@ def artifact_entry(artifact_id, kind, path, *, status="pending", source=None,
             "protected": protected, "regenerable": not protected}
 
 
-def project_session(directory, record):
+def project_session(directory, record, *, _normalization_intent=False):
     """Read evidence under the caller's existing session lock; never write files.
 
     Hashes verify referenced bytes, not paths or directory scans. No orphan is
@@ -156,6 +156,12 @@ def project_session(directory, record):
         saved, digest = _json_blob(folder, limit)
         size = folder.info(leaf).st_size
         if kind == "normalization":
+            # Recovery may validate a ready result against its still-pending
+            # report. All original/revision/final-file gates remain required.
+            # Normal projection/writes never promote publication intent.
+            if (_normalization_intent and saved.get("status") == "normalization_pending" and
+                    isinstance(saved.get("publication_intent"), dict)):
+                saved = saved["publication_intent"]
             _require(saved == pointer, "Normalization report differs from latest stage record")
         else:
             _require(digest == pointer.get("record_sha256") and saved.get("attempt_id") == attempt and
@@ -393,7 +399,8 @@ def session_status(config, session_id):
         # Preserve the import record but suppress its fulfilled prerequisite in
         # the technical view after full decoding has actually been verified.
         warnings = [w for w in warnings if w != "media_eligibility_pending"]
-    return {"session_id": session_id, "stored_schema_version": record["schema_version"],
+    from .recovery import _decision
+    return {"session_id": session_id, "recovery": _decision(view), "stored_schema_version": record["schema_version"],
             "state_model_version": STATE_MODEL_VERSION, "legacy_import_state": record["state"],
             "current_state": view["current_state"], "last_successful_state": view["last_successful_state"],
             "active_stage": view["active_stage"], "audio": record["audio"],

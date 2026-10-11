@@ -13,6 +13,7 @@ from .segmentation import PlanningFailure, plan_session
 from .exports import ExportFailure, export_session
 from .storage import StorageError
 from .session_state import session_status
+from .recovery import RecoveryFailure, recover_session, STAGES
 
 
 def log_result(root, ok: bool) -> None:
@@ -61,12 +62,27 @@ def main(argv=None) -> int:
     export.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted audio export")
     status = commands.add_parser("status", help="Read verified processing progress and artifact registry")
     status.add_argument("session_id")
+    resume = commands.add_parser("resume", help="Resume from the last verified audio stage")
+    resume.add_argument("session_id")
+    retry = commands.add_parser("retry", help="Retry the required stage; verified stages are unchanged")
+    retry.add_argument("session_id")
+    retry.add_argument("stage", nargs="?", choices=STAGES)
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command in ("resume", "retry"):
+        try:
+            result = recover_session(config, args.session_id, stage=getattr(args, "stage", None))
+        except (RecoveryFailure, InspectionFailure, StorageError, OSError) as exc:
+            result = {"ok": False, "error": {"code": getattr(exc, "code", "session_access_failed"),
+                      "message": str(exc) if isinstance(exc, ValueError) else "Cannot safely access session recovery."}}
+            print(json.dumps(result, indent=2))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+        return 1 if result["classification"].startswith("failed_") else 0
     if args.command == "status":
         try:
             result = session_status(config, args.session_id)

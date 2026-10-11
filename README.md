@@ -129,6 +129,14 @@ python -m recorandro status "$session_id"
 ```
 
 See [state schema, registry, actual host examples and pending Redmi validation](docs/SESSION_STATE.md).
-Step 3.1 is an uncommitted implementation candidate; actual Android validation,
-independent review and explicit FINAL PASS are still required. Recovery, manifests,
-ZIP packaging, visuals and final UI remain later steps.
+Step 3.2 adds local resume/retry from the verified audio frontier:
+
+```sh
+python -m recorandro resume "$session_id"
+python -m recorandro retry "$session_id" audio_export
+```
+
+See [recovery decisions, publication evidence, locks and controlled Android interruption tests](docs/SESSION_RECOVERY.md).
+Step 3.2 is an uncommitted candidate requiring independent review, actual Redmi
+validation and explicit FINAL PASS. Manifests, ZIP packaging, full archives,
+visual recovery and final UI remain unimplemented.

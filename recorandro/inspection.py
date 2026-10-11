@@ -274,10 +274,33 @@ def _existing_child(stack, directory, name):
     return stack.enter_context(directory.child(name))
 
 
+class _LockToken:
+    def __init__(self, directory, fd):
+        self.path = directory.path
+        self.identity = os.fstat(directory.fd) if directory.fd is not None else directory.path.stat()
+        self.fd, self.pid, self.thread = fd, os.getpid(), threading.get_ident()
+        self.active = True
+
+    def validate(self, directory):
+        info = os.fstat(directory.fd) if directory.fd is not None else directory.path.stat()
+        if (not self.active or self.pid != os.getpid() or self.thread != threading.get_ident() or
+                self.path != directory.path or
+                (info.st_dev, info.st_ino) != (self.identity.st_dev, self.identity.st_ino)):
+            _fail("invalid_lock_owner", "Stage lock ownership does not match this session/process.")
+        os.fstat(self.fd)
+
+
 @contextmanager
-def _inspection_lock(directory):
+def _inspection_lock(directory, token=None):
     """Kernel-released advisory lock; no stale lock after interruption/kill."""
+    if token is not None:
+        if not isinstance(token, _LockToken):
+            _fail("invalid_lock_owner", "Invalid session lock ownership token.")
+        token.validate(directory)
+        yield token
+        return
     fd = directory.open(".inspection.lock", os.O_RDWR | os.O_CREAT | getattr(os, "O_NONBLOCK", 0))
+    owner = None
     try:
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             _fail("unsafe_managed_path", "Inspection lock must be a regular owned file.")
@@ -291,8 +314,11 @@ def _inspection_lock(directory):
                 msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
         except OSError:
             _fail("inspection_busy", "Another inspection is active for this session; wait for it to finish.")
-        yield
+        owner = _LockToken(directory, fd)
+        yield owner
     finally:
+        if owner is not None:
+            owner.active = False
         os.close(fd)
 
 
@@ -338,7 +364,7 @@ def _verify(stream, directory, leaf, expected, initial=None):
     return before, {"status": "verified", "actual_size_bytes": size, "sha256": digest}
 
 
-def inspect_session(config, session_id, *, retry=False):
+def inspect_session(config, session_id, *, retry=False, _lock_token=None):
     """Inspect an existing import, persisting pending before any original access."""
     if not isinstance(session_id, str) or not re.fullmatch(r"[0-9a-f]{32}", session_id):
         _fail("invalid_session_id", "Session ID must be the 32 lowercase hex characters from import JSON.")
@@ -349,7 +375,7 @@ def inspect_session(config, session_id, *, retry=False):
         root = stack.enter_context(OwnedDirectory.root(config.data_root))
         sessions = _existing_child(stack, root, "sessions")
         directory = _existing_child(stack, sessions, session_id)
-        stack.enter_context(_inspection_lock(directory))
+        stack.enter_context(_inspection_lock(directory, _lock_token))
         record = _read_record(directory, session_id)
         prior = record.get("inspection")
         if prior is not None and (not isinstance(prior, dict) or

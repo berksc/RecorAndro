@@ -354,7 +354,7 @@ def _failure(exc):
     return PlanningFailure("managed_access_failed", "Cannot safely access/persist managed planning files; audio retained.")
 
 
-def plan_session(config, session_id, *, mode="auto", retry=False):
+def plan_session(config, session_id, *, mode="auto", retry=False, _lock_token=None):
     if not isinstance(session_id, str) or not re.fullmatch(r"[0-9a-f]{32}", session_id):
         fail("invalid_session_id", "Use an existing imported session identifier.")
     if mode not in ("auto", "force", "off"):
@@ -366,7 +366,7 @@ def plan_session(config, session_id, *, mode="auto", retry=False):
         root = stack.enter_context(OwnedDirectory.root(config.data_root))
         sessions = _existing_child(stack, root, "sessions")
         directory = _existing_child(stack, sessions, session_id)
-        stack.enter_context(_inspection_lock(directory))
+        stack.enter_context(_inspection_lock(directory, _lock_token))
         record = _read_record(directory, session_id)
         previous = record.get("segmentation")
         if previous is not None and (not isinstance(previous, dict) or previous.get("status") not in
