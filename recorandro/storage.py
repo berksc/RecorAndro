@@ -290,14 +290,34 @@ class OwnedDirectory:
         return shutil.disk_usage(self.path).free
 
     def atomic_json(self, record):
+        # Canonical session progress is a projection of the existing stage
+        # records. Attempt reports keep their own frozen schemas and bytes.
+        prepared = record
+        if isinstance(record, dict) and "audio" in record and "state" in record:
+            from .session_state import prepare_session
+            prepared = prepare_session(self, record)
         name = f".metadata-{uuid.uuid4().hex}.tmp"
         fd = self.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as output:
-                json.dump(record, output, ensure_ascii=False, indent=2, allow_nan=False)
+                json.dump(prepared, output, ensure_ascii=False, indent=2, allow_nan=False)
                 output.write("\n")
                 output.flush()
                 os.fsync(output.fileno())
+            if prepared is not record:
+                from .inspection import MAX_JSON_BYTES, _load_json
+                # Validate the complete fsynced candidate before replacing the
+                # canonical record, including interrupted/corrupt serialization.
+                candidate = self.open(name, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
+                with os.fdopen(candidate, "rb") as stream:
+                    if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                        raise StorageError("Invalid temporary session metadata")
+                    try:
+                        saved = _load_json(stream.read(MAX_JSON_BYTES + 1))
+                    except ValueError as exc:
+                        raise StorageError("Temporary session metadata is malformed or too large") from exc
+                    if saved != prepared:
+                        raise StorageError("Temporary session metadata differs from prepared record")
             self._leaf("session.json")
             try:
                 existing = self.info("session.json")
@@ -310,6 +330,11 @@ class OwnedDirectory:
             else:
                 os.replace(self.path / name, self.path / "session.json")
             self.sync()
+            if prepared is not record:
+                from .session_state import PROJECTION_KEYS
+                # Stage code retains references to its mutable attempt record.
+                # Refresh derived fields without replacing those owned objects.
+                record.update({key: prepared[key] for key in PROJECTION_KEYS})
         finally:
             try:
                 self.unlink(name)

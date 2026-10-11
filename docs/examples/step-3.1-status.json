@@ -1,0 +1,390 @@
+{
+  "session_id": "5e038155215b404eb4910ce050399389",
+  "stored_schema_version": 2,
+  "state_model_version": 1,
+  "legacy_import_state": "imported",
+  "current_state": "segments_exported",
+  "last_successful_state": "segments_exported",
+  "active_stage": null,
+  "audio": {
+    "original_filename": "quiet-tone.wav",
+    "source_bytes": 264644,
+    "imported_filename": "quiet-tone.wav",
+    "managed_path": "originals/audio/quiet-tone.wav",
+    "size_bytes": 264644,
+    "sha256": "4a8d4b8eefca22f2821a014175f99856a92eb399a5d13c332289c190ef53677a"
+  },
+  "audio_summary": {
+    "container_format": "wav",
+    "demuxer_family": "wav",
+    "selected_audio_stream_index": 0,
+    "stream_count": 1,
+    "audio_codec": "pcm_s16le",
+    "sample_rate": 44100,
+    "channels": 1,
+    "channel_layout": null,
+    "stream_bitrate": 705600,
+    "container_bitrate": 705717,
+    "duration_seconds": 3.0,
+    "duration_human": "00:00:03.00",
+    "duration_source": "stream",
+    "duration_estimates_seconds": {
+      "stream": 3.0,
+      "stream_time_base": 3.0,
+      "container": 3.0
+    },
+    "duration_ts": 132300,
+    "time_base": "1/44100",
+    "duration_consistency": {
+      "tolerance_seconds": 1.0,
+      "disagreements": []
+    },
+    "stream_start_seconds": null,
+    "container_start_seconds": null,
+    "container_reported_size_bytes": 264644,
+    "creation_time": {
+      "container": null,
+      "audio_stream": null,
+      "trusted": false,
+      "informational_only": true
+    },
+    "warnings": [],
+    "processing_eligibility": {
+      "status": "unverified",
+      "blockers": [],
+      "decoder": "unverified"
+    }
+  },
+  "normalization": {
+    "status": "normalization_succeeded",
+    "mode_requested": "auto",
+    "decision": "low_level_safe_boost",
+    "gain_db": 3.0,
+    "output_source": "normalized",
+    "normalization_applied": true
+  },
+  "segmentation": {
+    "schema_version": 1,
+    "attempt_id": "261da1af55b64d5ab8650218e67088e5",
+    "status": "planned",
+    "mode_requested": "auto",
+    "record_path": "generated/segmentation/261da1af55b64d5ab8650218e67088e5/session.json",
+    "record_sha256": "793594751e200f196faa4587cf81c43a11db6b4f7d5dba5c81a252e87f64e535",
+    "source": {
+      "kind": "normalized",
+      "normalization_attempt_id": "8cd224ad29844b3f9a451d1174476e98",
+      "managed_path": "generated/normalization/8cd224ad29844b3f9a451d1174476e98/normalized.m4a",
+      "sha256": "9ffb592d9aa70a0ff6a669b9092d1dc5e6e660994a26eba38bf246e6e5d5bbb7",
+      "size_bytes": 48835,
+      "media": {
+        "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "demuxer_family": "mov",
+        "selected_audio_stream_index": 0,
+        "stream_count": 1,
+        "audio_codec": "aac",
+        "sample_rate": 44100,
+        "channels": 1,
+        "channel_layout": "mono",
+        "stream_bitrate": 125707,
+        "container_bitrate": 130226,
+        "duration_seconds": 3.0,
+        "duration_human": "00:00:03.00",
+        "duration_source": "stream",
+        "duration_estimates_seconds": {
+          "stream": 3.0,
+          "stream_time_base": 3.0,
+          "container": 3.0
+        },
+        "duration_ts": 132300,
+        "time_base": "1/44100",
+        "duration_consistency": {
+          "tolerance_seconds": 1.0,
+          "disagreements": []
+        },
+        "stream_start_seconds": 0.0,
+        "container_start_seconds": 0.0,
+        "container_reported_size_bytes": 48835,
+        "creation_time": {
+          "container": null,
+          "audio_stream": null,
+          "trusted": false,
+          "informational_only": true
+        },
+        "warnings": [],
+        "processing_eligibility": {
+          "status": "unverified",
+          "blockers": [],
+          "decoder": "unverified"
+        }
+      },
+      "full_decode_verified": true
+    },
+    "error": null,
+    "completed_at": "2026-10-11T11:48:50.616163+00:00",
+    "expected_part_count": 1,
+    "mode_fulfilled": true,
+    "decision": "auto_single_part"
+  },
+  "part_count": 1,
+  "artifacts": {
+    "session_metadata": {
+      "artifact_id": "session_metadata",
+      "type": "session_metadata",
+      "relative_path": "session.json",
+      "status": "canonical",
+      "source_artifact_id": null,
+      "size_bytes": null,
+      "sha256": null,
+      "media": null,
+      "created_at": "2026-10-11T11:48:49.024699+00:00",
+      "verified_at": null,
+      "revision_id": null,
+      "classification": "protected",
+      "protected": true,
+      "regenerable": false
+    },
+    "original_audio": {
+      "artifact_id": "original_audio",
+      "type": "original_audio",
+      "relative_path": "originals/audio/quiet-tone.wav",
+      "status": "verified",
+      "source_artifact_id": null,
+      "size_bytes": 264644,
+      "sha256": "4a8d4b8eefca22f2821a014175f99856a92eb399a5d13c332289c190ef53677a",
+      "media": {
+        "container_format": "wav",
+        "demuxer_family": "wav",
+        "selected_audio_stream_index": 0,
+        "stream_count": 1,
+        "audio_codec": "pcm_s16le",
+        "sample_rate": 44100,
+        "channels": 1,
+        "channel_layout": null,
+        "stream_bitrate": 705600,
+        "container_bitrate": 705717,
+        "duration_seconds": 3.0,
+        "duration_human": "00:00:03.00",
+        "duration_source": "stream",
+        "duration_estimates_seconds": {
+          "stream": 3.0,
+          "stream_time_base": 3.0,
+          "container": 3.0
+        },
+        "duration_ts": 132300,
+        "time_base": "1/44100",
+        "duration_consistency": {
+          "tolerance_seconds": 1.0,
+          "disagreements": []
+        },
+        "stream_start_seconds": null,
+        "container_start_seconds": null,
+        "container_reported_size_bytes": 264644,
+        "creation_time": {
+          "container": null,
+          "audio_stream": null,
+          "trusted": false,
+          "informational_only": true
+        },
+        "warnings": [],
+        "processing_eligibility": {
+          "status": "unverified",
+          "blockers": [],
+          "decoder": "unverified"
+        }
+      },
+      "created_at": "2026-10-11T11:48:49.024699+00:00",
+      "verified_at": "2026-10-11T11:48:49.024699+00:00",
+      "revision_id": null,
+      "classification": "protected",
+      "protected": true,
+      "regenerable": false
+    },
+    "normalization_report:8cd224ad29844b3f9a451d1174476e98": {
+      "artifact_id": "normalization_report:8cd224ad29844b3f9a451d1174476e98",
+      "type": "normalization_report",
+      "relative_path": "generated/normalization/8cd224ad29844b3f9a451d1174476e98/session.json",
+      "status": "verified",
+      "source_artifact_id": "original_audio",
+      "size_bytes": 7596,
+      "sha256": "b81f10e4467e73ce00b79fccbfa2fc7d197725873d2d13964817d98cf1d5e9ea",
+      "media": null,
+      "created_at": "2026-10-11T11:48:49.379461+00:00",
+      "verified_at": "2026-10-11T11:48:50.148295+00:00",
+      "revision_id": "8cd224ad29844b3f9a451d1174476e98",
+      "classification": "regenerable",
+      "protected": false,
+      "regenerable": true
+    },
+    "normalized_audio:8cd224ad29844b3f9a451d1174476e98": {
+      "artifact_id": "normalized_audio:8cd224ad29844b3f9a451d1174476e98",
+      "type": "normalized_audio",
+      "relative_path": "generated/normalization/8cd224ad29844b3f9a451d1174476e98/normalized.m4a",
+      "status": "verified",
+      "source_artifact_id": "original_audio",
+      "size_bytes": 48835,
+      "sha256": "9ffb592d9aa70a0ff6a669b9092d1dc5e6e660994a26eba38bf246e6e5d5bbb7",
+      "media": {
+        "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "demuxer_family": "mov",
+        "selected_audio_stream_index": 0,
+        "stream_count": 1,
+        "audio_codec": "aac",
+        "sample_rate": 44100,
+        "channels": 1,
+        "channel_layout": "mono",
+        "stream_bitrate": 125707,
+        "container_bitrate": 130226,
+        "duration_seconds": 3.0,
+        "duration_human": "00:00:03.00",
+        "duration_source": "stream",
+        "duration_estimates_seconds": {
+          "stream": 3.0,
+          "stream_time_base": 3.0,
+          "container": 3.0
+        },
+        "duration_ts": 132300,
+        "time_base": "1/44100",
+        "duration_consistency": {
+          "tolerance_seconds": 1.0,
+          "disagreements": []
+        },
+        "stream_start_seconds": 0.0,
+        "container_start_seconds": 0.0,
+        "container_reported_size_bytes": 48835,
+        "creation_time": {
+          "container": null,
+          "audio_stream": null,
+          "trusted": false,
+          "informational_only": true
+        },
+        "warnings": [],
+        "processing_eligibility": {
+          "status": "unverified",
+          "blockers": [],
+          "decoder": "unverified"
+        },
+        "codec_profile": "LC"
+      },
+      "created_at": "2026-10-11T11:48:50.148295+00:00",
+      "verified_at": "2026-10-11T11:48:50.148295+00:00",
+      "revision_id": "8cd224ad29844b3f9a451d1174476e98",
+      "classification": "regenerable",
+      "protected": false,
+      "regenerable": true
+    },
+    "segmentation_report:261da1af55b64d5ab8650218e67088e5": {
+      "artifact_id": "segmentation_report:261da1af55b64d5ab8650218e67088e5",
+      "type": "segmentation_report",
+      "relative_path": "generated/segmentation/261da1af55b64d5ab8650218e67088e5/session.json",
+      "status": "verified",
+      "source_artifact_id": "normalized_audio:8cd224ad29844b3f9a451d1174476e98",
+      "size_bytes": 4213,
+      "sha256": "793594751e200f196faa4587cf81c43a11db6b4f7d5dba5c81a252e87f64e535",
+      "media": null,
+      "created_at": "2026-10-11T11:48:50.287497+00:00",
+      "verified_at": "2026-10-11T11:48:50.616163+00:00",
+      "revision_id": "261da1af55b64d5ab8650218e67088e5",
+      "classification": "regenerable",
+      "protected": false,
+      "regenerable": true
+    },
+    "exports_report:174a2ad0322d4fe5a8eda3f62394a480": {
+      "artifact_id": "exports_report:174a2ad0322d4fe5a8eda3f62394a480",
+      "type": "export_report",
+      "relative_path": "generated/exports/174a2ad0322d4fe5a8eda3f62394a480/session.json",
+      "status": "verified",
+      "source_artifact_id": "normalized_audio:8cd224ad29844b3f9a451d1174476e98",
+      "size_bytes": 6368,
+      "sha256": "ab6e42fd430c4beaa188469ba53df9ff0c1bba3d927bef44ca4f3419d09cfa93",
+      "media": null,
+      "created_at": "2026-10-11T11:48:50.801424+00:00",
+      "verified_at": "2026-10-11T11:48:51.929448+00:00",
+      "revision_id": "174a2ad0322d4fe5a8eda3f62394a480",
+      "classification": "regenerable",
+      "protected": false,
+      "regenerable": true
+    },
+    "audio_part:174a2ad0322d4fe5a8eda3f62394a480:1": {
+      "artifact_id": "audio_part:174a2ad0322d4fe5a8eda3f62394a480:1",
+      "type": "audio_part",
+      "relative_path": "generated/exports/174a2ad0322d4fe5a8eda3f62394a480/part_01.m4a",
+      "status": "verified",
+      "source_artifact_id": "normalized_audio:8cd224ad29844b3f9a451d1174476e98",
+      "size_bytes": 48835,
+      "sha256": "9ffb592d9aa70a0ff6a669b9092d1dc5e6e660994a26eba38bf246e6e5d5bbb7",
+      "media": {
+        "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "demuxer_family": "mov",
+        "selected_audio_stream_index": 0,
+        "stream_count": 1,
+        "audio_codec": "aac",
+        "sample_rate": 44100,
+        "channels": 1,
+        "channel_layout": "mono",
+        "stream_bitrate": 125707,
+        "container_bitrate": 130226,
+        "duration_seconds": 3.0,
+        "duration_human": "00:00:03.00",
+        "duration_source": "stream",
+        "duration_estimates_seconds": {
+          "stream": 3.0,
+          "stream_time_base": 3.0,
+          "container": 3.0
+        },
+        "duration_ts": 132300,
+        "time_base": "1/44100",
+        "duration_consistency": {
+          "tolerance_seconds": 1.0,
+          "disagreements": []
+        },
+        "stream_start_seconds": 0.0,
+        "container_start_seconds": 0.0,
+        "container_reported_size_bytes": 48835,
+        "creation_time": {
+          "container": null,
+          "audio_stream": null,
+          "trusted": false,
+          "informational_only": true
+        },
+        "warnings": [],
+        "processing_eligibility": {
+          "status": "unverified",
+          "blockers": [],
+          "decoder": "unverified"
+        },
+        "codec_profile": "LC"
+      },
+      "created_at": "2026-10-11T11:48:51.929448+00:00",
+      "verified_at": "2026-10-11T11:48:51.929448+00:00",
+      "revision_id": "174a2ad0322d4fe5a8eda3f62394a480",
+      "classification": "regenerable",
+      "protected": false,
+      "regenerable": true,
+      "plan_reference": {
+        "attempt_id": "261da1af55b64d5ab8650218e67088e5",
+        "record_path": "generated/segmentation/261da1af55b64d5ab8650218e67088e5/session.json",
+        "sha256": "793594751e200f196faa4587cf81c43a11db6b4f7d5dba5c81a252e87f64e535"
+      }
+    }
+  },
+  "visual_count": 0,
+  "package_status": {
+    "status": "not_implemented"
+  },
+  "archive_status": {
+    "status": "not_implemented",
+    "selection": {
+      "selection": "not_requested",
+      "resolved": "not_requested",
+      "provenance": "explicit_request",
+      "reserve_archive": false
+    }
+  },
+  "errors": [],
+  "warnings": [
+    "storage_estimate_unverified",
+    "gain_limited_target_may_remain_unmet",
+    "constant_gain_raises_background_noise",
+    "effective_bitrate_differs_from_requested"
+  ]
+}

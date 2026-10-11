@@ -303,10 +303,10 @@ def _read_record(directory, session_id):
             _fail("invalid_session", "Session metadata must be a regular file.")
         record = _load_json(stream.read(MAX_JSON_BYTES + 1))
     if (not isinstance(record, dict) or type(record.get("schema_version")) is not int or
-            record["schema_version"] != 1 or record.get("session_id") != session_id or
+            record["schema_version"] not in (1, 2) or record.get("session_id") != session_id or
             record.get("state") != "imported" or not isinstance(record.get("audio"), dict) or
             type(record.get("visual_count")) is not int or record["visual_count"] < 0):
-        _fail("invalid_session", "Requires a matching schema-v1 imported session with an audio record.")
+        _fail("invalid_session", "Requires a matching schema-v1/v2 imported session with an audio record.")
     audio = record["audio"]
     leaf = audio.get("imported_filename")
     if (not isinstance(leaf, str) or not leaf or safe_leaf(leaf) != leaf or

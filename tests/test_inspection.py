@@ -426,7 +426,9 @@ class SessionInspectionTests(InspectionSessionFixture):
                            ("imported_filename", "../escape.wav"), ("sha256", "bad"), ("size_bytes", True)):
             record = copy.deepcopy(self.imported)
             record["audio"][key] = value
-            self.write_record(record)
+            # Deliberate external corruption bypasses the identity-protecting
+            # canonical writer; the reader must still fail closed.
+            (self.directory / "session.json").write_text(json.dumps(record), encoding="utf-8")
             with self.subTest(key=key, value=value), patch("recorandro.inspection.run_probe") as probe, \
                     self.assertRaises(InspectionFailure):
                 inspect_session(self.config, self.session_id)
@@ -434,7 +436,7 @@ class SessionInspectionTests(InspectionSessionFixture):
         for key, value in (("session_id", "0" * 32), ("state", "failed"), ("schema_version", True)):
             record = copy.deepcopy(self.imported)
             record[key] = value
-            self.write_record(record)
+            (self.directory / "session.json").write_text(json.dumps(record), encoding="utf-8")
             with self.assertRaises(InspectionFailure):
                 self.mocked()
         for session_id in ("../escape", str(self.source), "a" * 31, "A" * 32):

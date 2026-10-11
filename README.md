@@ -119,3 +119,16 @@ was explicitly waived; no listening PASS is claimed. See
 [accepted Android export evidence](docs/SESSION_EXPORT.md#accepted-android-validation--step-24-final-pass).
 ZIP packaging and final manifests remain unimplemented. No commit/push or
 subsequent step without separate authorization.
+
+Step 3.1 adds persistent processing progress and a classified artifact registry
+alongside the existing import/stage records. Technical status supports legacy
+sessions and checks the current source/revision evidence:
+
+```sh
+python -m recorandro status "$session_id"
+```
+
+See [state schema, registry, actual host examples and pending Redmi validation](docs/SESSION_STATE.md).
+Step 3.1 is an uncommitted implementation candidate; actual Android validation,
+independent review and explicit FINAL PASS are still required. Recovery, manifests,
+ZIP packaging, visuals and final UI remain later steps.

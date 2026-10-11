@@ -577,11 +577,12 @@ class SessionTests(SessionFixture):
     def test_managed_path_and_symlink_security(self):
         record = self.record()
         record["audio"]["managed_path"] = "../../external.wav"
-        self.write_record(record)
+        # Simulate corruption outside the identity-protecting canonical writer.
+        (self.directory / "session.json").write_text(json.dumps(record), encoding="utf-8")
         with self.assertRaises((NormalizationFailure, ValueError, OSError)):
             self.mocked()
         record["audio"] = self.imported["audio"]
-        self.write_record(record)
+        (self.directory / "session.json").write_text(json.dumps(record), encoding="utf-8")
         alias = self.base / "alias"
         try:
             os.symlink(self.config.data_root, alias, target_is_directory=True)

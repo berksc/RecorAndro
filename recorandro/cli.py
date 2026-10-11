@@ -12,6 +12,7 @@ from .normalization import NormalizationFailure, normalize_session
 from .segmentation import PlanningFailure, plan_session
 from .exports import ExportFailure, export_session
 from .storage import StorageError
+from .session_state import session_status
 
 
 def log_result(root, ok: bool) -> None:
@@ -58,12 +59,23 @@ def main(argv=None) -> int:
     export = commands.add_parser("export-session", help="Export verified audio from the latest saved plan")
     export.add_argument("session_id")
     export.add_argument("--retry", action="store_true", help="Explicitly retry failed/interrupted audio export")
+    status = commands.add_parser("status", help="Read verified processing progress and artifact registry")
+    status.add_argument("session_id")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
     except ConfigError as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    if args.command == "status":
+        try:
+            result = session_status(config, args.session_id)
+        except (InspectionFailure, StorageError, OSError) as exc:
+            print(json.dumps({"ok": False, "error": {"code": getattr(exc, "code", "session_status_failed"),
+                  "message": str(exc) if isinstance(exc, ValueError) else "Cannot safely read session status."}}, indent=2))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+        return 1 if result["current_state"] == "failed" else 0
     if args.command == "export-session":
         try:
             attempt = export_session(config, args.session_id, retry=args.retry)
